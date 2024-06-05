@@ -1,6 +1,8 @@
 #include <iostream>
 #include <matrix/matrix.hh>
 #include <graphics/graphics.hh>
+#include <graphics/window.hh>
+#include <unistd.h>
 
 int main()
 {
@@ -8,7 +10,8 @@ int main()
     mat[0][0] = 42;
     std::cout << mat[0][0] << '\n';
 
-    graphics::Graphics _graphics;
+    graphics::Window window;
+    window.run();
 
     return 0;
 }
