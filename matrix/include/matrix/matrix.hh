@@ -12,14 +12,24 @@ namespace matrix
         static constexpr int rows = ROW;
         static constexpr int cols = COL;
 
-        const type* operator[](int idx) const;
-        type* operator[](int idx);
+        Matrix<TYPE, ROW, COL>
+        operator+(const Matrix<TYPE, ROW, COL> mat) const;
+
+        Matrix<TYPE, ROW, COL>
+        operator-(const Matrix<TYPE, ROW, COL> mat) const;
+
+        template <int OUT_COL>
+        Matrix<TYPE, ROW, OUT_COL>
+        operator*(const Matrix<TYPE, COL, OUT_COL> mat) const;
+
+        const TYPE* operator[](int idx) const;
+        TYPE* operator[](int idx);
 
         // friend std::ostream &operator<<(std::ostream &os,
         //                                 const Matrix<TYPE, ROW, COL>);
 
     private:
-        type mat_[rows][cols];
+        TYPE mat_[rows][cols];
     };
 
     using Matrix4F = Matrix<float, 4, 4>;
