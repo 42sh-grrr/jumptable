@@ -5,7 +5,6 @@ add_library(libgraphics INTERFACE)
 
 add_subdirectory(src)
 
-find_package(X11)
-
 target_include_directories(libgraphics INTERFACE include)
-target_link_libraries(libgraphics INTERFACE X11)
+# Sorry
+target_link_options(libgraphics INTERFACE -lxcb)

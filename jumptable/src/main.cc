@@ -13,5 +13,7 @@ int main()
     graphics::Window window;
     window.run();
 
+    sleep(1);
+
     return 0;
 }
