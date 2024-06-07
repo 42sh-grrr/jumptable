@@ -7,4 +7,4 @@ add_subdirectory(src)
 
 target_include_directories(libgraphics INTERFACE include)
 # Sorry
-target_link_options(libgraphics INTERFACE -lxcb)
+target_link_options(libgraphics INTERFACE -lxcb -lxcb-ewmh -lxcb-icccm)

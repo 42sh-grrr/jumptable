@@ -19,6 +19,9 @@ namespace graphics
         const char *title_ = "Unnamed";
         int width_ = 100;
         int height_ = 100;
+
+        int minWidth_ = 100;
+        int minHeight_ = 100;
     };
 
     class Window
