@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <stdexcept>
 #include <xcb/xcb.h>
 #include <xcb/xcb_atom.h>
 #include <xcb/xcb_icccm.h>
@@ -9,8 +10,10 @@
 #include <memory>
 #include <unistd.h>
 #include <xcb/xproto.h>
+#include "graphics/window_events.hh"
 
-namespace graphics {
+namespace graphics
+{
     struct Window::WindowData
     {
         xcb_connection_t *connection;
@@ -41,18 +44,28 @@ namespace graphics {
         }
     };
 
-    WindowBuilder &WindowBuilder::title(const char *title) {
+    WindowBuilder &WindowBuilder::title(const char *title)
+    {
         title_ = title;
         return *this;
     }
 
-    WindowBuilder &WindowBuilder::size(int width, int height) {
+    WindowBuilder &WindowBuilder::size(int width, int height)
+    {
         width_ = width;
         height_ = height;
         return *this;
     }
 
-    Window WindowBuilder::build() {
+    WindowBuilder &WindowBuilder::min_size(int min_width, int min_height)
+    {
+        min_width_ = min_width;
+        min_height_ = min_height;
+        return *this;
+    }
+
+    Window WindowBuilder::build()
+    {
         std::unique_ptr<Window::WindowData> data = std::make_unique<Window::WindowData>();
 
         data->connection = xcb_connect(nullptr, nullptr);
@@ -92,8 +105,8 @@ namespace graphics {
                  XCB_ICCCM_SIZE_HINT_P_MIN_SIZE;
         hints.width = width_;
         hints.height = height_;
-        hints.min_width = minWidth_;
-        hints.min_height = minHeight_;
+        hints.min_width = min_width_;
+        hints.min_height = min_height_;
 
         xcb_icccm_set_wm_normal_hints_checked(
             data->connection, data->window_id, &hints
@@ -114,20 +127,32 @@ namespace graphics {
             xcb_disconnect(data_->connection);
     }
 
-    void Window::run()
+    std::unique_ptr<WindowEvent> window_event_from_xcb_event(xcb_generic_event_t *event)
     {
-        for (;;)
+        switch (event->response_type & ~0x80)
         {
-            xcb_generic_event_t *event = xcb_wait_for_event(data_->connection);
-            if (!event)
-                break;
-            switch (event->response_type & ~0x80)
+        case XCB_EXPOSE:
             {
-            case XCB_EXPOSE:
                 xcb_expose_event_t *expose = reinterpret_cast<xcb_expose_event_t *>(event);
-                std::cout << "Expose (size: " << expose->width << "x" << expose->height << ")\n";
-                break;
+                return std::make_unique<WindowEventExpose>(WindowEventExpose({
+                    .width = expose->width,
+                    .height = expose->height,
+                    .x = expose->x,
+                    .y = expose->y,
+                }));
             }
+        default:
+            return std::unique_ptr<WindowEvent>();
         }
+    }
+
+    std::unique_ptr<WindowEvent> Window::poll_event()
+    {
+        return window_event_from_xcb_event(xcb_poll_for_event(data_->connection));
+    }
+
+    std::unique_ptr<WindowEvent> Window::wait_event()
+    {
+        return window_event_from_xcb_event(xcb_wait_for_event(data_->connection));
     }
 }

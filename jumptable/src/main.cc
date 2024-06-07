@@ -2,7 +2,9 @@
 #include <matrix/matrix.hh>
 #include <graphics/graphics.hh>
 #include <graphics/window.hh>
+#include <memory>
 #include <unistd.h>
+#include "graphics/window_events.hh"
 
 int main()
 {
@@ -13,7 +15,17 @@ int main()
     graphics::Window window = graphics::WindowBuilder()
         .title("bite")
         .build();
-    window.run();
+
+    for (;;)
+    {
+        std::unique_ptr<graphics::WindowEvent> event = window.wait_event();
+
+        if (auto *expose = dynamic_cast<graphics::WindowEventExpose*>(&*event))
+        {
+            std::cout << "Expose <pos " << expose->x << ", " << expose->y
+                      << "> <size " << expose->width << "x" << expose->height << ">\n";
+        }
+    }
 
     sleep(1);
 
