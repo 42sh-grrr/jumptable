@@ -10,7 +10,9 @@ int main()
     mat[0][0] = 42;
     std::cout << mat[0][0] << '\n';
 
-    graphics::Window window("bite");
+    graphics::Window window = graphics::WindowBuilder()
+        .title("bite")
+        .build();
     window.run();
 
     sleep(1);
