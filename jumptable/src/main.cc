@@ -25,6 +25,12 @@ int main()
             std::cout << "Expose <pos " << expose->x << ", " << expose->y
                       << "> <size " << expose->width << "x" << expose->height << ">\n";
         }
+        if (auto *keypress = dynamic_cast<graphics::WindowEventKeyPress*>(&*event))
+        {
+            // ESC
+            if (keypress->keycode == 9)
+                break;
+        }
     }
 
     sleep(1);

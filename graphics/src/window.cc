@@ -78,7 +78,9 @@ namespace graphics
 
         uint32_t mask = XCB_CW_EVENT_MASK;
         uint32_t value_list[] = {
-            XCB_EVENT_MASK_EXPOSURE
+            XCB_EVENT_MASK_EXPOSURE |
+            XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |
+            0
         };
         xcb_create_window(
             data->connection,              /* connection */
@@ -131,16 +133,27 @@ namespace graphics
     {
         switch (event->response_type & ~0x80)
         {
-        case XCB_EXPOSE:
-            {
-                xcb_expose_event_t *expose = reinterpret_cast<xcb_expose_event_t *>(event);
-                return std::make_unique<WindowEventExpose>(WindowEventExpose({
-                    .width = expose->width,
-                    .height = expose->height,
-                    .x = expose->x,
-                    .y = expose->y,
-                }));
-            }
+        case XCB_KEY_PRESS: {
+            auto keypress = reinterpret_cast<xcb_key_press_event_t *>(event);
+            return std::make_unique<WindowEventKeyPress>(WindowEventKeyPress({
+                .keycode = keypress->detail,
+            }));
+        }
+        case XCB_KEY_RELEASE: {
+            auto keyrelease = reinterpret_cast<xcb_key_release_event_t *>(event);
+            return std::make_unique<WindowEventKeyRelease>(WindowEventKeyRelease({
+                .keycode = keyrelease->detail,
+            }));
+        }
+        case XCB_EXPOSE: {
+            auto expose = reinterpret_cast<xcb_expose_event_t *>(event);
+            return std::make_unique<WindowEventExpose>(WindowEventExpose({
+                .width = expose->width,
+                .height = expose->height,
+                .x = expose->x,
+                .y = expose->y,
+            }));
+        }
         default:
             return std::unique_ptr<WindowEvent>();
         }
