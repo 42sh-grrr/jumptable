@@ -7,7 +7,7 @@ namespace graphics
     class Window
     {
     public:
-        Window();
+        Window(const char *title, int width = 100, int height = 100);
         ~Window();
 
         void run();

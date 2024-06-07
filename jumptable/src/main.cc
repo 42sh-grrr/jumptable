@@ -10,7 +10,7 @@ int main()
     mat[0][0] = 42;
     std::cout << mat[0][0] << '\n';
 
-    graphics::Window window;
+    graphics::Window window("bite");
     window.run();
 
     sleep(1);
