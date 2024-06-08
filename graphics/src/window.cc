@@ -2,7 +2,6 @@
 
 #include <cstring>
 #include <iostream>
-#include <stdexcept>
 #include <xcb/xcb.h>
 #include <xcb/xcb_atom.h>
 #include <xcb/xcb_icccm.h>
@@ -80,6 +79,15 @@ namespace graphics
         uint32_t value_list[] = {
             XCB_EVENT_MASK_EXPOSURE |
             XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |
+
+            XCB_EVENT_MASK_BUTTON_PRESS |
+            XCB_EVENT_MASK_BUTTON_RELEASE |
+            XCB_EVENT_MASK_POINTER_MOTION | 
+            XCB_EVENT_MASK_BUTTON_MOTION | 
+            XCB_EVENT_MASK_BUTTON_1_MOTION | 
+            XCB_EVENT_MASK_BUTTON_2_MOTION | 
+            XCB_EVENT_MASK_BUTTON_3_MOTION | 
+            XCB_EVENT_MASK_BUTTON_4_MOTION | 
             0
         };
         xcb_create_window(
@@ -145,16 +153,51 @@ namespace graphics
                 .keycode = keyrelease->detail,
             }));
         }
+        case XCB_MOTION_NOTIFY: {
+            auto motion = reinterpret_cast<xcb_motion_notify_event_t *>(event);
+            return std::make_unique<WindowEventMouseMove>(WindowEventMouseMove({
+                .x = motion->event_x,
+                .y = motion->event_y,
+                .root_x = motion->root_x,
+                .root_y = motion->root_y,
+                .mouse_buttons = static_cast<uint8_t>(motion->state >> 8),
+            }));
+        }
+        case XCB_BUTTON_PRESS: {
+            auto button = reinterpret_cast<xcb_button_press_event_t *>(event);
+            return std::make_unique<WindowEventMouseButtonPress>(WindowEventMouseButtonPress({
+                .mouse = {
+                    .x = button->event_x,
+                    .y = button->event_y,
+                    .root_x = button->root_x,
+                    .root_y = button->root_y,
+                    .mouse_buttons = static_cast<uint8_t>(button->state >> 8),
+                },
+                .pressed_button = button->detail,
+            }));
+        }
+        case XCB_BUTTON_RELEASE: {
+            auto button = reinterpret_cast<xcb_button_release_event_t *>(event);
+            return std::make_unique<WindowEventMouseButtonRelease>(WindowEventMouseButtonRelease({
+                .mouse = {
+                    .x = button->event_x,
+                    .y = button->event_y,
+                    .root_x = button->root_x,
+                    .root_y = button->root_y,
+                    .mouse_buttons = static_cast<uint8_t>(button->state >> 8),
+                },
+                .released_button = button->detail,
+            }));
+        }
         case XCB_EXPOSE: {
             auto expose = reinterpret_cast<xcb_expose_event_t *>(event);
             return std::make_unique<WindowEventExpose>(WindowEventExpose({
                 .width = expose->width,
                 .height = expose->height,
-                .x = expose->x,
-                .y = expose->y,
             }));
         }
         default:
+            std::cerr << "Unknown event: " << (event->response_type & ~0x80) << "\n";
             return std::unique_ptr<WindowEvent>();
         }
     }
