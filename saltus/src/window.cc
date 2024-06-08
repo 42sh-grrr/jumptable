@@ -10,6 +10,7 @@
 #include <memory>
 #include <unistd.h>
 #include <xcb/xproto.h>
+#include <vulkan/vulkan_xcb.h>
 
 namespace saltus
 {
@@ -210,5 +211,22 @@ namespace saltus
     std::unique_ptr<WindowEvent> Window::wait_event()
     {
         return window_event_from_xcb_event(xcb_wait_for_event(data_->connection));
+    }
+    
+    VkSurfaceKHR Window::create_vulkan_surface(VkInstance instance)
+    {
+        VkXcbSurfaceCreateInfoKHR create_info{};
+        create_info.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+        create_info.connection = data_->connection;
+        create_info.window = data_->window_id;
+
+        VkSurfaceKHR surface;
+        VkResult result = vkCreateXcbSurfaceKHR(instance, &create_info, nullptr, &surface);
+        if (result != VK_SUCCESS)
+        {
+            throw std::runtime_error("Could not create surface");
+        }
+
+        return surface;
     }
 }

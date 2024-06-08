@@ -3,6 +3,7 @@
 #include "window_events.hh"
 
 #include <memory>
+#include <vulkan/vulkan_core.h>
 
 namespace saltus
 {
@@ -34,6 +35,8 @@ namespace saltus
 
         std::unique_ptr<WindowEvent> poll_event();
         std::unique_ptr<WindowEvent> wait_event();
+
+        VkSurfaceKHR create_vulkan_surface(VkInstance instance);
 
     protected:
         struct WindowData;

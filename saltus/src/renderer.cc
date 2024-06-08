@@ -4,7 +4,7 @@
 
 namespace saltus
 {
-    Renderer::Renderer()
+    Renderer::Renderer(Window &window): window_(window)
     {
         
     }
@@ -18,7 +18,7 @@ namespace saltus
     #pragma GCC diagnostic ignored "-Wunused-parameter"
     std::unique_ptr<Renderer> Renderer::create(Window &window)
     {
-        return std::make_unique<VulkanRenderer>();
+        return std::make_unique<VulkanRenderer>(window);
     }
     #pragma GCC diagnostic pop
 } // namespace saltus

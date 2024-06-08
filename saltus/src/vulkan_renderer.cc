@@ -50,36 +50,15 @@ namespace saltus
         );
     }
 
-    struct QueueFamilyIndices
+    bool QueueFamilyIndices::is_complete()
     {
-        std::optional<uint32_t> graphicsFamily;
+        return graphicsFamily.has_value() && presentFamily.has_value();
+    }
 
-        QueueFamilyIndices(VkPhysicalDevice device)
-        {
-            uint32_t queue_family_count = 0;
-            vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, nullptr);
-            std::vector<VkQueueFamilyProperties> families(queue_family_count);
-            vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, families.data());
-
-            int index = 0;
-            for (const auto &family : families)
-            {
-                if (family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-                    graphicsFamily = index;
-
-                index++;
-            }
-        }
-
-        bool is_complete()
-        {
-            return graphicsFamily.has_value();
-        }
-    };
-
-    VulkanRenderer::VulkanRenderer()
+    VulkanRenderer::VulkanRenderer(Window &window): Renderer(window)
     {
         create_instance();
+        create_surface();
         choose_physical_device();
         create_device();
     }
@@ -88,6 +67,32 @@ namespace saltus
     {
         vkDestroyInstance(instance_, nullptr);
         vkDestroyDevice(device_, nullptr);
+    }
+
+    QueueFamilyIndices VulkanRenderer::get_physical_device_family_indices(VkPhysicalDevice device)
+    {
+        QueueFamilyIndices indices;
+
+        uint32_t queue_family_count = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, nullptr);
+        std::vector<VkQueueFamilyProperties> families(queue_family_count);
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, families.data());
+
+        int index = 0;
+        for (const auto &family : families)
+        {
+            if (family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+                indices.graphicsFamily = index;
+
+            VkBool32 supported = false;
+            vkGetPhysicalDeviceSurfaceSupportKHR(device, index, surface_, &supported);
+            if (supported)
+                indices.presentFamily = index;
+
+            index++;
+        }
+
+        return indices;
     }
 
     void VulkanRenderer::create_instance()
@@ -130,9 +135,14 @@ namespace saltus
             throw std::runtime_error("Vulkan error while creating instance");
     }
 
+    void VulkanRenderer::create_surface()
+    {
+        surface_ = window_.create_vulkan_surface(instance_);
+    }
+
     bool VulkanRenderer::is_physical_device_suitable(VkPhysicalDevice physical_device)
     {
-        QueueFamilyIndices families(physical_device);
+        QueueFamilyIndices families = get_physical_device_family_indices(physical_device);
         return families.is_complete();
     }
 
@@ -157,22 +167,30 @@ namespace saltus
 
     void VulkanRenderer::create_device()
     {
-        QueueFamilyIndices families(physical_device_);
+        QueueFamilyIndices families = get_physical_device_family_indices(physical_device_);
 
-        VkDeviceQueueCreateInfo queue_create_info{};
-        queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queue_create_info.queueFamilyIndex = families.graphicsFamily.value();
-        queue_create_info.queueCount = 1;
+        std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
+        
         float priority = 1.f;
-        queue_create_info.pQueuePriorities = &priority;
+        for (uint32_t index : {
+            families.graphicsFamily.value(), families.presentFamily.value(),
+        })
+        {
+            VkDeviceQueueCreateInfo info{};
+            info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            info.queueFamilyIndex = index;
+            info.queueCount = 1;
+            info.pQueuePriorities = &priority;
+            queue_create_infos.push_back(info);
+        }
 
         VkPhysicalDeviceFeatures device_features{};
 
         VkDeviceCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
-        create_info.queueCreateInfoCount = 1;
-        create_info.pQueueCreateInfos = &queue_create_info;
+        create_info.queueCreateInfoCount = queue_create_infos.size();
+        create_info.pQueueCreateInfos = queue_create_infos.data();
 
         create_info.pEnabledFeatures = &device_features;
 
@@ -195,5 +213,6 @@ namespace saltus
         }
 
         vkGetDeviceQueue(device_, families.graphicsFamily.value(), 0, &graphics_queue_);
+        vkGetDeviceQueue(device_, families.presentFamily.value(), 0, &present_queue_);
     }
 }

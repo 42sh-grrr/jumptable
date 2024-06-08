@@ -13,8 +13,12 @@ namespace saltus
 
         static std::unique_ptr<Renderer> create(Window &window);
 
+        Window &window();
+
     protected:
-        Renderer();
+        Renderer(Window &window);
+
+        Window &window_;
     };
 } // namespace saltus
 

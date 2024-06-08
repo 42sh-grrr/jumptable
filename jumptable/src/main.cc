@@ -6,10 +6,9 @@
 
 int main()
 {
-    saltus::Window window = saltus::WindowBuilder()
+    auto window = saltus::WindowBuilder()
         .title("bite")
         .build();
-
     auto renderer = saltus::Renderer::create(window);
 
     sleep(1);
