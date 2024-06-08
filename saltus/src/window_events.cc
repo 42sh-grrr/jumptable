@@ -2,61 +2,61 @@
 
 namespace saltus
 {
-    const char *WindowEventExpose::name() const
+    const char *WindowExposeEvent::name() const
     {
         return "expose";
     }
 
-    WindowEventExpose::WindowEventExpose(Data data):
+    WindowExposeEvent::WindowExposeEvent(Data data):
         width(data.width), height(data.height)
     { }
     
-    WindowEventKeyboard::WindowEventKeyboard(Data data):
+    WindowKeyboardEvent::WindowKeyboardEvent(Data data):
         keycode(data.keycode)
     { }
     
-    WindowEventKeyPress::WindowEventKeyPress(Data data): WindowEventKeyboard(data)
+    WindowKeyPressEvent::WindowKeyPressEvent(Data data): WindowKeyboardEvent(data)
     { }
     
-    const char *WindowEventKeyPress::name() const
+    const char *WindowKeyPressEvent::name() const
     {
         return "keypress";
     }
 
-    WindowEventKeyRelease::WindowEventKeyRelease(Data data): WindowEventKeyboard(data)
+    WindowKeyReleaseEvent::WindowKeyReleaseEvent(Data data): WindowKeyboardEvent(data)
     { }
 
-    const char *WindowEventKeyRelease::name() const
+    const char *WindowKeyReleaseEvent::name() const
     {
         return "keyrelease";
     }
 
-    WindowEventMouse::WindowEventMouse(Data data):
+    WindowMouseEvent::WindowMouseEvent(Data data):
         x(data.x), y(data.y), mouse_buttons(data.mouse_buttons)
     { }
 
-    WindowEventMouseMove::WindowEventMouseMove(Data data): WindowEventMouse(data)
+    WindowMouseMoveEvent::WindowMouseMoveEvent(Data data): WindowMouseEvent(data)
     { }
 
-    const char *WindowEventMouseMove::name() const
+    const char *WindowMouseMoveEvent::name() const
     {
         return "mousemove";
     }
 
-    WindowEventMouseButtonPress::WindowEventMouseButtonPress(Data data):
-        WindowEventMouse(data.mouse), pressed_button(data.pressed_button)
+    WindowMouseButtonPressEvent::WindowMouseButtonPressEvent(Data data):
+        WindowMouseEvent(data.mouse), pressed_button(data.pressed_button)
     { }
 
-    const char *WindowEventMouseButtonPress::name() const
+    const char *WindowMouseButtonPressEvent::name() const
     {
         return "mousebuttonpress";
     }
 
-    WindowEventMouseButtonRelease::WindowEventMouseButtonRelease(Data data):
-        WindowEventMouse(data.mouse), released_button(data.released_button)
+    WindowMouseButtonReleaseEvent::WindowMouseButtonReleaseEvent(Data data):
+        WindowMouseEvent(data.mouse), released_button(data.released_button)
     { }
 
-    const char *WindowEventMouseButtonRelease::name() const
+    const char *WindowMouseButtonReleaseEvent::name() const
     {
         return "mousebuttonrelease";
     }

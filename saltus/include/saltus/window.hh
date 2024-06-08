@@ -44,4 +44,4 @@ namespace saltus
     private:
         std::unique_ptr<WindowData> data_;
     };
-} // namespace graphics
+} // namespace saltus

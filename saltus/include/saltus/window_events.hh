@@ -13,7 +13,7 @@ namespace saltus
     private:
     };
 
-    class WindowEventExpose: public WindowEvent
+    class WindowExposeEvent: public WindowEvent
     {
     public:
         struct Data {
@@ -21,12 +21,12 @@ namespace saltus
         };
         int width, height;
 
-        WindowEventExpose(Data data);
+        WindowExposeEvent(Data data);
 
         const char *name() const override;
     };
 
-    class WindowEventKeyboard: public WindowEvent
+    class WindowKeyboardEvent: public WindowEvent
     {
     public:
         struct Data {
@@ -34,26 +34,26 @@ namespace saltus
         };
         uint8_t keycode;
 
-        WindowEventKeyboard(Data data);
+        WindowKeyboardEvent(Data data);
     };
 
-    class WindowEventKeyPress: public WindowEventKeyboard
+    class WindowKeyPressEvent: public WindowKeyboardEvent
     {
     public:
-        WindowEventKeyPress(Data data);
+        WindowKeyPressEvent(Data data);
 
         const char *name() const override;
     };
 
-    class WindowEventKeyRelease: public WindowEventKeyboard
+    class WindowKeyReleaseEvent: public WindowKeyboardEvent
     {
     public:
-        WindowEventKeyRelease(Data data);
+        WindowKeyReleaseEvent(Data data);
 
         const char *name() const override;
     };
 
-    class WindowEventMouse: public WindowEvent
+    class WindowMouseEvent: public WindowEvent
     {
     public:
         struct Data {
@@ -61,7 +61,7 @@ namespace saltus
             int root_x, root_y;
             uint8_t mouse_buttons;
         };
-        WindowEventMouse(Data data);
+        WindowMouseEvent(Data data);
 
         int x, y;
         /// "Desktop" position
@@ -71,42 +71,41 @@ namespace saltus
         uint8_t mouse_buttons;
     };
 
-    class WindowEventMouseMove: public WindowEventMouse
+    class WindowMouseMoveEvent: public WindowMouseEvent
     {
     public:
-        WindowEventMouseMove(Data data);
+        WindowMouseMoveEvent(Data data);
 
         const char *name() const override;
     };
 
-    class WindowEventMouseButtonPress: public WindowEventMouse
+    class WindowMouseButtonPressEvent: public WindowMouseEvent
     {
     public:
         struct Data {
-            WindowEventMouse::Data mouse;
+            WindowMouseEvent::Data mouse;
             int pressed_button;
         };
         /// Cautious: Starts at one (not like the pressed_button bitfield)
         int pressed_button;
         
-        WindowEventMouseButtonPress(Data data);
+        WindowMouseButtonPressEvent(Data data);
 
         const char *name() const override;
     };
 
-    class WindowEventMouseButtonRelease: public WindowEventMouse
+    class WindowMouseButtonReleaseEvent: public WindowMouseEvent
     {
     public:
         struct Data {
-            WindowEventMouse::Data mouse;
+            WindowMouseEvent::Data mouse;
             int released_button;
         };
         /// Cautious: Starts at one (not like the pressed_button bitfield)
         int released_button;
         
-        WindowEventMouseButtonRelease(Data data);
+        WindowMouseButtonReleaseEvent(Data data);
 
         const char *name() const override;
     };
-} // namespace graphics
-
+} // namespace saltus

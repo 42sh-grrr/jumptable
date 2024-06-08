@@ -2,7 +2,6 @@
 #include <matrix/matrix.hh>
 #include <saltus/window.hh>
 #include <saltus/window_events.hh>
-#include <memory>
 #include <unistd.h>
 
 int main()
@@ -21,11 +20,11 @@ int main()
         if (!event)
             continue;
 
-        if (auto *expose = dynamic_cast<saltus::WindowEventExpose*>(&*event))
+        if (auto *expose = dynamic_cast<saltus::WindowExposeEvent*>(&*event))
         {
             std::cout << "Expose <size " << expose->width << "x" << expose->height << ">\n";
         }
-        if (auto *keypress = dynamic_cast<saltus::WindowEventKeyPress*>(&*event))
+        if (auto *keypress = dynamic_cast<saltus::WindowKeyPressEvent*>(&*event))
         {
             // ESC
             if (keypress->keycode == 9)
@@ -36,7 +35,7 @@ int main()
         //     std::cout << "Button pressed: " << buttonpress->pressed_button
         //     << ", current buttons: " << static_cast<int>(buttonpress->mouse_buttons) << "\n";
         // }
-        if (auto *buttonrelease = dynamic_cast<saltus::WindowEventMouseButtonRelease*>(&*event))
+        if (auto *buttonrelease = dynamic_cast<saltus::WindowMouseButtonReleaseEvent*>(&*event))
         {
             std::cout << "Button release: " << buttonrelease->released_button
             << ", current buttons: " << static_cast<int>(buttonrelease->mouse_buttons)

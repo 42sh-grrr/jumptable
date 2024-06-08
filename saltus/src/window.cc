@@ -143,19 +143,19 @@ namespace saltus
         {
         case XCB_KEY_PRESS: {
             auto keypress = reinterpret_cast<xcb_key_press_event_t *>(event);
-            return std::make_unique<WindowEventKeyPress>(WindowEventKeyPress({
+            return std::make_unique<WindowKeyPressEvent>(WindowKeyPressEvent({
                 .keycode = keypress->detail,
             }));
         }
         case XCB_KEY_RELEASE: {
             auto keyrelease = reinterpret_cast<xcb_key_release_event_t *>(event);
-            return std::make_unique<WindowEventKeyRelease>(WindowEventKeyRelease({
+            return std::make_unique<WindowKeyReleaseEvent>(WindowKeyReleaseEvent({
                 .keycode = keyrelease->detail,
             }));
         }
         case XCB_MOTION_NOTIFY: {
             auto motion = reinterpret_cast<xcb_motion_notify_event_t *>(event);
-            return std::make_unique<WindowEventMouseMove>(WindowEventMouseMove({
+            return std::make_unique<WindowMouseMoveEvent>(WindowMouseMoveEvent({
                 .x = motion->event_x,
                 .y = motion->event_y,
                 .root_x = motion->root_x,
@@ -165,7 +165,7 @@ namespace saltus
         }
         case XCB_BUTTON_PRESS: {
             auto button = reinterpret_cast<xcb_button_press_event_t *>(event);
-            return std::make_unique<WindowEventMouseButtonPress>(WindowEventMouseButtonPress({
+            return std::make_unique<WindowMouseButtonPressEvent>(WindowMouseButtonPressEvent({
                 .mouse = {
                     .x = button->event_x,
                     .y = button->event_y,
@@ -178,7 +178,7 @@ namespace saltus
         }
         case XCB_BUTTON_RELEASE: {
             auto button = reinterpret_cast<xcb_button_release_event_t *>(event);
-            return std::make_unique<WindowEventMouseButtonRelease>(WindowEventMouseButtonRelease({
+            return std::make_unique<WindowMouseButtonReleaseEvent>(WindowMouseButtonReleaseEvent({
                 .mouse = {
                     .x = button->event_x,
                     .y = button->event_y,
@@ -191,7 +191,7 @@ namespace saltus
         }
         case XCB_EXPOSE: {
             auto expose = reinterpret_cast<xcb_expose_event_t *>(event);
-            return std::make_unique<WindowEventExpose>(WindowEventExpose({
+            return std::make_unique<WindowExposeEvent>(WindowExposeEvent({
                 .width = expose->width,
                 .height = expose->height,
             }));
