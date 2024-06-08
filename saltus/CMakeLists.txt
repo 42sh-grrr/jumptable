@@ -7,4 +7,4 @@ add_subdirectory(src)
 
 target_include_directories(libsaltus INTERFACE include)
 # Sorry
-target_link_options(libsaltus INTERFACE -lxcb -lxcb-ewmh -lxcb-icccm)
+target_link_options(libsaltus INTERFACE -lxcb -lxcb-ewmh -lxcb-icccm -lvulkan)
