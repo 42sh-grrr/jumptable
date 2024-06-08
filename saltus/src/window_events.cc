@@ -1,6 +1,7 @@
-#include "graphics/window_events.hh"
+#include "saltus/window_events.hh"
 
-namespace graphics {
+namespace saltus
+{
     const char *WindowEventExpose::name() const
     {
         return "expose";

@@ -1,4 +1,5 @@
-#include "graphics/window.hh"
+#include "saltus/window_events.hh"
+#include "saltus/window.hh"
 
 #include <cstring>
 #include <iostream>
@@ -9,9 +10,8 @@
 #include <memory>
 #include <unistd.h>
 #include <xcb/xproto.h>
-#include "graphics/window_events.hh"
 
-namespace graphics
+namespace saltus
 {
     struct Window::WindowData
     {

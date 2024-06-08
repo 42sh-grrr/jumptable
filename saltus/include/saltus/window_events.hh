@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace graphics
+namespace saltus
 {
     class WindowEvent
     {
