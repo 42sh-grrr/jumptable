@@ -140,6 +140,8 @@ namespace saltus
 
     std::unique_ptr<WindowEvent> window_event_from_xcb_event(xcb_generic_event_t *event)
     {
+        if (!event)
+            return std::unique_ptr<WindowEvent>();
         switch (event->response_type & ~0x80)
         {
         case XCB_KEY_PRESS: {
@@ -211,6 +213,20 @@ namespace saltus
     std::unique_ptr<WindowEvent> Window::wait_event()
     {
         return window_event_from_xcb_event(xcb_wait_for_event(data_->connection));
+    }
+
+    WindowGeometry Window::request_geometry()
+    {
+        auto cookie = xcb_get_geometry(data_->connection, data_->window_id);
+        auto reply = xcb_get_geometry_reply(data_->connection, cookie, nullptr);
+        if (!reply)
+            throw std::runtime_error("Could not request error");
+        return {
+            .x = reply->x,
+            .y = reply->y,
+            .width = reply->width,
+            .height = reply->height,
+        };
     }
     
     VkSurfaceKHR Window::create_vulkan_surface(VkInstance instance)

@@ -9,6 +9,14 @@ namespace saltus
 {
     class Window;
 
+    struct WindowGeometry
+    {
+        /// Position
+        int x, y;
+        /// Size
+        int width, height;
+    };
+
     class WindowBuilder {
     public:
         WindowBuilder() = default;
@@ -35,6 +43,8 @@ namespace saltus
 
         std::unique_ptr<WindowEvent> poll_event();
         std::unique_ptr<WindowEvent> wait_event();
+
+        WindowGeometry request_geometry();
 
         VkSurfaceKHR create_vulkan_surface(VkInstance instance);
 
