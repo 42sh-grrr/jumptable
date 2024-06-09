@@ -29,6 +29,9 @@ namespace saltus
         VulkanRenderer(Window &window);
         ~VulkanRenderer();
 
+        void render() override;
+        void wait_for_idle() override;
+
     private:
         bool validation_enabled_;
         
@@ -54,6 +57,10 @@ namespace saltus
         VkCommandPool command_pool_;
         VkCommandBuffer command_buffer_;
 
+        VkSemaphore image_available_semaphore_;
+        VkSemaphore render_finished_semaphore_;
+        VkFence in_flight_fence_;
+
         QueueFamilyIndices get_physical_device_family_indices(VkPhysicalDevice device);
         SwapChainSupportDetails get_physical_device_swap_chain_support_details(VkPhysicalDevice device);
         VkShaderModule create_shader_module(const std::vector<char> &code);
@@ -78,6 +85,7 @@ namespace saltus
         void create_graphics_pipeline();
         void create_frame_buffers();
         void create_command_pool_and_buffer();
+        void create_sync_objects();
 
         void record_command_buffer(
             VkCommandBuffer command_buffer, uint32_t image_index

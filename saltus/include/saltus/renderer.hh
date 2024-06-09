@@ -9,11 +9,14 @@ namespace saltus
     class Renderer
     {
     public:
-        ~Renderer();
+        virtual ~Renderer();
 
         static std::unique_ptr<Renderer> create(Window &window);
 
         Window &window();
+
+        virtual void render() = 0;
+        virtual void wait_for_idle() = 0;
 
     protected:
         Renderer(Window &window);

@@ -1,8 +1,9 @@
+#include <iostream>
 #include <matrix/matrix.hh>
 #include <saltus/window.hh>
 #include <saltus/window_events.hh>
+#include <saltus/renderer.hh>
 #include <unistd.h>
-#include "saltus/renderer.hh"
 
 int main()
 {
@@ -11,7 +12,24 @@ int main()
         .build();
     auto renderer = saltus::Renderer::create(window);
 
-    sleep(1);
+    for (;;)
+    {
+        auto event = window.wait_event();
+        if (!event)
+            continue;
 
+        if (dynamic_cast<saltus::WindowExposeEvent*>(&*event))
+        {
+            std::cout << "Rendering...\n";
+            renderer->render();
+            std::cout << "Finished rendering !\n";
+            break;
+        }
+    }
+
+    renderer->wait_for_idle();
+
+    std::cout << "Bye bye !\n";
+    sleep(1);
     return 0;
 }
