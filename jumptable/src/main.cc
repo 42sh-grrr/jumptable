@@ -23,13 +23,16 @@ int main()
             std::cout << "Rendering...\n";
             renderer->render();
             std::cout << "Finished rendering !\n";
-            break;
+            continue;
         }
+
+        if (dynamic_cast<saltus::WindowCloseRequestEvent*>(&*event))
+            break;
     }
 
     renderer->wait_for_idle();
 
     std::cout << "Bye bye !\n";
-    sleep(1);
+
     return 0;
 }

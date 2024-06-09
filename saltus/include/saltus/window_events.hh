@@ -13,6 +13,14 @@ namespace saltus
     private:
     };
 
+    class WindowCloseRequestEvent: public WindowEvent
+    {
+    public:
+        WindowCloseRequestEvent() = default;
+
+        const char *name() const override;
+    };
+
     class WindowExposeEvent: public WindowEvent
     {
     public:

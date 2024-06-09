@@ -29,7 +29,7 @@ namespace saltus
             return atom;
         }
 
-        void setProperty(const char *name, const char *value, const char *type)
+        void set_property(const char *name, const char *value, const char *type)
         {
             xcb_change_property(
                 connection,
@@ -41,6 +41,84 @@ namespace saltus
                 strlen(value),
                 value
             );
+        }
+
+        std::unique_ptr<WindowEvent> window_event_from_xcb_event(xcb_generic_event_t *event)
+        {
+            if (!event)
+                return std::unique_ptr<WindowEvent>();
+            switch (event->response_type & ~0x80)
+            {
+            case XCB_CLIENT_MESSAGE: {
+                auto client_message = reinterpret_cast<xcb_client_message_event_t *>(event);
+                if (
+                    client_message->format == 32 &&
+                    client_message->type == intern("WM_PROTOCOLS") &&
+                    client_message->data.data32[0] == intern("WM_DELETE_WINDOW")
+                )
+                    return std::make_unique<WindowCloseRequestEvent>();
+           
+                return std::unique_ptr<WindowEvent>();
+            }
+            case XCB_KEY_PRESS: {
+                auto keypress = reinterpret_cast<xcb_key_press_event_t *>(event);
+                return std::make_unique<WindowKeyPressEvent>(WindowKeyPressEvent({
+                    .keycode = keypress->detail,
+                }));
+            }
+            case XCB_KEY_RELEASE: {
+                auto keyrelease = reinterpret_cast<xcb_key_release_event_t *>(event);
+                return std::make_unique<WindowKeyReleaseEvent>(WindowKeyReleaseEvent({
+                    .keycode = keyrelease->detail,
+                }));
+            }
+            case XCB_MOTION_NOTIFY: {
+                auto motion = reinterpret_cast<xcb_motion_notify_event_t *>(event);
+                return std::make_unique<WindowMouseMoveEvent>(WindowMouseMoveEvent({
+                    .x = motion->event_x,
+                    .y = motion->event_y,
+                    .root_x = motion->root_x,
+                    .root_y = motion->root_y,
+                    .mouse_buttons = static_cast<uint8_t>(motion->state >> 8),
+                }));
+            }
+            case XCB_BUTTON_PRESS: {
+                auto button = reinterpret_cast<xcb_button_press_event_t *>(event);
+                return std::make_unique<WindowMouseButtonPressEvent>(WindowMouseButtonPressEvent({
+                    .mouse = {
+                        .x = button->event_x,
+                        .y = button->event_y,
+                        .root_x = button->root_x,
+                        .root_y = button->root_y,
+                        .mouse_buttons = static_cast<uint8_t>(button->state >> 8),
+                    },
+                    .pressed_button = button->detail,
+                }));
+            }
+            case XCB_BUTTON_RELEASE: {
+                auto button = reinterpret_cast<xcb_button_release_event_t *>(event);
+                return std::make_unique<WindowMouseButtonReleaseEvent>(WindowMouseButtonReleaseEvent({
+                    .mouse = {
+                        .x = button->event_x,
+                        .y = button->event_y,
+                        .root_x = button->root_x,
+                        .root_y = button->root_y,
+                        .mouse_buttons = static_cast<uint8_t>(button->state >> 8),
+                    },
+                    .released_button = button->detail,
+                }));
+            }
+            case XCB_EXPOSE: {
+                auto expose = reinterpret_cast<xcb_expose_event_t *>(event);
+                return std::make_unique<WindowExposeEvent>(WindowExposeEvent({
+                    .width = expose->width,
+                    .height = expose->height,
+                }));
+            }
+            default:
+                std::cerr << "Unknown event: " << (event->response_type & ~0x80) << "\n";
+                return std::unique_ptr<WindowEvent>();
+            }
         }
     };
 
@@ -89,6 +167,7 @@ namespace saltus
             XCB_EVENT_MASK_BUTTON_2_MOTION | 
             XCB_EVENT_MASK_BUTTON_3_MOTION | 
             XCB_EVENT_MASK_BUTTON_4_MOTION | 
+            
             0
         };
         xcb_create_window(
@@ -123,6 +202,14 @@ namespace saltus
             data->connection, data->window_id, &hints
         );
 
+        xcb_atom_t protocols[] = {
+            data->intern("WM_DELETE_WINDOW")
+        };
+        xcb_icccm_set_wm_protocols(
+            data->connection, data->window_id, data->intern("WM_PROTOCOLS"),
+            sizeof(protocols) / sizeof(*protocols), protocols
+        );
+
         xcb_map_window(data->connection, data->window_id);
         xcb_flush(data->connection);
 
@@ -138,81 +225,14 @@ namespace saltus
             xcb_disconnect(data_->connection);
     }
 
-    std::unique_ptr<WindowEvent> window_event_from_xcb_event(xcb_generic_event_t *event)
-    {
-        if (!event)
-            return std::unique_ptr<WindowEvent>();
-        switch (event->response_type & ~0x80)
-        {
-        case XCB_KEY_PRESS: {
-            auto keypress = reinterpret_cast<xcb_key_press_event_t *>(event);
-            return std::make_unique<WindowKeyPressEvent>(WindowKeyPressEvent({
-                .keycode = keypress->detail,
-            }));
-        }
-        case XCB_KEY_RELEASE: {
-            auto keyrelease = reinterpret_cast<xcb_key_release_event_t *>(event);
-            return std::make_unique<WindowKeyReleaseEvent>(WindowKeyReleaseEvent({
-                .keycode = keyrelease->detail,
-            }));
-        }
-        case XCB_MOTION_NOTIFY: {
-            auto motion = reinterpret_cast<xcb_motion_notify_event_t *>(event);
-            return std::make_unique<WindowMouseMoveEvent>(WindowMouseMoveEvent({
-                .x = motion->event_x,
-                .y = motion->event_y,
-                .root_x = motion->root_x,
-                .root_y = motion->root_y,
-                .mouse_buttons = static_cast<uint8_t>(motion->state >> 8),
-            }));
-        }
-        case XCB_BUTTON_PRESS: {
-            auto button = reinterpret_cast<xcb_button_press_event_t *>(event);
-            return std::make_unique<WindowMouseButtonPressEvent>(WindowMouseButtonPressEvent({
-                .mouse = {
-                    .x = button->event_x,
-                    .y = button->event_y,
-                    .root_x = button->root_x,
-                    .root_y = button->root_y,
-                    .mouse_buttons = static_cast<uint8_t>(button->state >> 8),
-                },
-                .pressed_button = button->detail,
-            }));
-        }
-        case XCB_BUTTON_RELEASE: {
-            auto button = reinterpret_cast<xcb_button_release_event_t *>(event);
-            return std::make_unique<WindowMouseButtonReleaseEvent>(WindowMouseButtonReleaseEvent({
-                .mouse = {
-                    .x = button->event_x,
-                    .y = button->event_y,
-                    .root_x = button->root_x,
-                    .root_y = button->root_y,
-                    .mouse_buttons = static_cast<uint8_t>(button->state >> 8),
-                },
-                .released_button = button->detail,
-            }));
-        }
-        case XCB_EXPOSE: {
-            auto expose = reinterpret_cast<xcb_expose_event_t *>(event);
-            return std::make_unique<WindowExposeEvent>(WindowExposeEvent({
-                .width = expose->width,
-                .height = expose->height,
-            }));
-        }
-        default:
-            std::cerr << "Unknown event: " << (event->response_type & ~0x80) << "\n";
-            return std::unique_ptr<WindowEvent>();
-        }
-    }
-
     std::unique_ptr<WindowEvent> Window::poll_event()
     {
-        return window_event_from_xcb_event(xcb_poll_for_event(data_->connection));
+        return data_->window_event_from_xcb_event(xcb_poll_for_event(data_->connection));
     }
 
     std::unique_ptr<WindowEvent> Window::wait_event()
     {
-        return window_event_from_xcb_event(xcb_wait_for_event(data_->connection));
+        return data_->window_event_from_xcb_event(xcb_wait_for_event(data_->connection));
     }
 
     WindowGeometry Window::request_geometry()

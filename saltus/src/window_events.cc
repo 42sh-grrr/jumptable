@@ -2,6 +2,11 @@
 
 namespace saltus
 {
+    const char *WindowCloseRequestEvent::name() const
+    {
+        return "closerequest";
+    }
+    
     const char *WindowExposeEvent::name() const
     {
         return "expose";
