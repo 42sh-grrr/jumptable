@@ -51,7 +51,7 @@ namespace matrix
     Matrix<TYPE, ROW, OUT_COL> Matrix<TYPE, ROW, COL>::operator*(
         const Matrix<TYPE, COL, OUT_COL> mat) const
     {
-        Matrix<TYPE, ROW, COL> res;
+        Matrix<TYPE, ROW, OUT_COL> res;
         for (int i = 0; i < ROW; i++)
         {
             for (int j = 0; j < OUT_COL; j++)

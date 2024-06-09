@@ -34,7 +34,11 @@ namespace matrix
         TYPE mat_[rows][cols];
     };
 
+    template <typename TYPE, int ROW>
+    using Vector = Matrix<TYPE, ROW, 1>;
+
     using Matrix4F = Matrix<float, 4, 4>;
+    using Vector4F = Vector<float, 4>;
 } // namespace matrix
 
 #include <matrix/matrix.hxx>
