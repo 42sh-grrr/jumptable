@@ -87,6 +87,9 @@ namespace saltus
         void create_command_pool_and_buffer();
         void create_sync_objects();
 
+        void clean_swap_chain();
+        void recreate_swap_chain();
+
         void record_command_buffer(
             VkCommandBuffer command_buffer, uint32_t image_index
         );

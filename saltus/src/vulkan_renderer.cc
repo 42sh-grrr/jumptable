@@ -11,6 +11,7 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
+#include <vulkan/vk_enum_string_helper.h>
 
 namespace saltus
 {
@@ -107,14 +108,10 @@ namespace saltus
         vkDestroySemaphore(device_, render_finished_semaphore_, nullptr);
         vkDestroyFence(device_, in_flight_fence_, nullptr);
         vkDestroyCommandPool(device_, command_pool_, nullptr);
-        for (const auto &framebuffer : swapchain_framebuffers_)
-            vkDestroyFramebuffer(device_, framebuffer, nullptr);
         vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
         vkDestroyPipelineLayout(device_, pipeline_layout_, nullptr);
         vkDestroyRenderPass(device_, render_pass_, nullptr);
-        for (const auto &view : swapchain_image_views_)
-            vkDestroyImageView(device_, view, nullptr);
-        vkDestroySwapchainKHR(device_, swapchain_, nullptr);
+        clean_swap_chain();
         vkDestroySurfaceKHR(instance_, surface_, nullptr);
         vkDestroyDevice(device_, nullptr);
         vkDestroyInstance(instance_, nullptr);
@@ -123,15 +120,22 @@ namespace saltus
     void VulkanRenderer::render()
     {
         vkWaitForFences(device_, 1, &in_flight_fence_, VK_TRUE, UINT64_MAX);
-        vkResetFences(device_, 1, &in_flight_fence_);
 
         uint32_t image_index;
         VkResult result = vkAcquireNextImageKHR(
             device_, swapchain_, UINT32_MAX, image_available_semaphore_,
             nullptr, &image_index
         );
-        if (result != VK_SUCCESS)
+        if (result == VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            recreate_swap_chain();
+            render();
+            return;
+        }
+        if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("Could not acquire an image");
+
+        vkResetFences(device_, 1, &in_flight_fence_);
 
         record_command_buffer(command_buffer_, image_index);
 
@@ -171,7 +175,16 @@ namespace saltus
         present_info.pImageIndices = &image_index;
 
         result = vkQueuePresentKHR(present_queue_, &present_info);
-        if (result != VK_SUCCESS)
+        if (result == VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            recreate_swap_chain();
+            render();
+        }
+        else if (result == VK_SUBOPTIMAL_KHR)
+        {
+            recreate_swap_chain();
+        }
+        else if (result != VK_SUCCESS)
             throw std::runtime_error("Could not present to queue");
     }
 
@@ -778,6 +791,26 @@ namespace saltus
         result = vkCreateFence(device_, &fence_info, nullptr, &in_flight_fence_);
         if (result != VK_SUCCESS)
             throw std::runtime_error("Could not create fence");
+    }
+
+    void VulkanRenderer::clean_swap_chain()
+    {
+        for (const auto &framebuffer : swapchain_framebuffers_)
+            vkDestroyFramebuffer(device_, framebuffer, nullptr);
+        for (const auto &view : swapchain_image_views_)
+            vkDestroyImageView(device_, view, nullptr);
+        vkDestroySwapchainKHR(device_, swapchain_, nullptr);
+    }
+
+    void VulkanRenderer::recreate_swap_chain()
+    {
+        vkDeviceWaitIdle(device_);
+
+        clean_swap_chain();
+
+        create_swap_chain();
+        create_image_views();
+        create_frame_buffers();
     }
 
     void VulkanRenderer::record_command_buffer(
