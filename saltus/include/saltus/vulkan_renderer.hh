@@ -51,6 +51,9 @@ namespace saltus
         VkPipelineLayout pipeline_layout_;
         VkPipeline graphics_pipeline_;
 
+        VkCommandPool command_pool_;
+        VkCommandBuffer command_buffer_;
+
         QueueFamilyIndices get_physical_device_family_indices(VkPhysicalDevice device);
         SwapChainSupportDetails get_physical_device_swap_chain_support_details(VkPhysicalDevice device);
         VkShaderModule create_shader_module(const std::vector<char> &code);
@@ -74,5 +77,10 @@ namespace saltus
         void create_render_pass();
         void create_graphics_pipeline();
         void create_frame_buffers();
+        void create_command_pool_and_buffer();
+
+        void record_command_buffer(
+            VkCommandBuffer command_buffer, uint32_t image_index
+        );
     };
 }
