@@ -76,6 +76,8 @@ namespace saltus
 
     VulkanRenderer::~VulkanRenderer()
     {
+        for (const auto &view : swapchain_image_views_)
+            vkDestroyImageView(device_, view, nullptr);
         vkDestroySwapchainKHR(device_, swapchain_, nullptr);
         vkDestroyDevice(device_, nullptr);
         vkDestroyInstance(instance_, nullptr);
@@ -412,5 +414,33 @@ namespace saltus
         vkGetSwapchainImagesKHR(
             device_, swapchain_, &real_image_count, swapchain_images_.data()
         );
+    }
+
+    void VulkanRenderer::create_image_views()
+    {
+        swapchain_image_views_.clear();
+
+        for (const auto &image : swapchain_images_)
+        {
+            VkImageViewCreateInfo create_info{};
+            create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            create_info.image = image;
+            create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+            create_info.format = swapchain_image_format_;
+            create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+            create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+            create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+            create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+            create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            create_info.subresourceRange.baseMipLevel = 0;
+            create_info.subresourceRange.levelCount = 1;
+            create_info.subresourceRange.baseArrayLayer = 0;
+            create_info.subresourceRange.layerCount = 1;
+            VkImageView image_view;
+            VkResult result =
+                vkCreateImageView(device_, &create_info, nullptr, &image_view);
+            if (!result)
+                throw std::runtime_error("Failed to create an image view");
+        }
     }
 }

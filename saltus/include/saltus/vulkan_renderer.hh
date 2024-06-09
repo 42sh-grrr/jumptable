@@ -44,6 +44,7 @@ namespace saltus
         VkExtent2D swapchain_extent_;
         VkSwapchainKHR swapchain_;
         std::vector<VkImage> swapchain_images_;
+        std::vector<VkImageView> swapchain_image_views_;
 
         QueueFamilyIndices get_physical_device_family_indices(VkPhysicalDevice device);
         SwapChainSupportDetails get_physical_device_swap_chain_support_details(VkPhysicalDevice device);
@@ -63,5 +64,6 @@ namespace saltus
             const VkSurfaceCapabilitiesKHR &capabilities
         );
         void create_swap_chain();
+        void create_image_views();
     };
 }
