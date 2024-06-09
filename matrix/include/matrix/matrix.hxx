@@ -4,6 +4,17 @@
 
 namespace matrix
 {
+    template <typename TYPE, int ROW, int COL>
+    Matrix<TYPE, ROW, COL>::Matrix()
+    {
+        for (int i = 0; i < ROW; i++)
+        {
+            for (int j = 0; j < COL; j++)
+            {
+                mat_[i][j] = 0;
+            }
+        }
+    }
 
     template <typename TYPE, int ROW, int COL>
     Matrix<TYPE, ROW, COL>

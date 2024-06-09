@@ -12,6 +12,8 @@ namespace matrix
         static constexpr int rows = ROW;
         static constexpr int cols = COL;
 
+        Matrix();
+
         Matrix<TYPE, ROW, COL>
         operator+(const Matrix<TYPE, ROW, COL> mat) const;
 
