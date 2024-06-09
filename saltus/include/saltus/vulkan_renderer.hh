@@ -46,8 +46,13 @@ namespace saltus
         std::vector<VkImage> swapchain_images_;
         std::vector<VkImageView> swapchain_image_views_;
 
+        VkRenderPass render_pass_;
+        VkPipelineLayout pipeline_layout_;
+        VkPipeline graphics_pipeline_;
+
         QueueFamilyIndices get_physical_device_family_indices(VkPhysicalDevice device);
         SwapChainSupportDetails get_physical_device_swap_chain_support_details(VkPhysicalDevice device);
+        VkShaderModule create_shader_module(const std::vector<char> &code);
 
         void create_instance();
         void create_surface();
@@ -65,5 +70,7 @@ namespace saltus
         );
         void create_swap_chain();
         void create_image_views();
+        void create_render_pass();
+        void create_graphics_pipeline();
     };
 }

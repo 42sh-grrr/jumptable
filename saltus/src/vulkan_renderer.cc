@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
 #include <limits>
 #include <optional>
 #include <stdexcept>
@@ -28,7 +29,9 @@ namespace saltus
         "VK_KHR_swapchain"
     };
 
-    bool check_extension_is_supported(const char *name)
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wunused-function"
+    static bool check_extension_is_supported(const char *name)
     {
         uint32_t supported_extension_count;
         vkEnumerateInstanceExtensionProperties(nullptr, &supported_extension_count, nullptr);
@@ -43,8 +46,9 @@ namespace saltus
             }
         );
     }
+    #pragma GCC diagnostic pop
 
-    bool check_layer_is_supported(const char *name)
+    static bool check_layer_is_supported(const char *name)
     {
         uint32_t supported_layer_count;
         vkEnumerateInstanceLayerProperties(&supported_layer_count, nullptr);
@@ -60,6 +64,22 @@ namespace saltus
         );
     }
 
+    static std::vector<char> read_full_file(const std::string& filename)
+    {
+        std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+        if (!file.is_open())
+            throw std::runtime_error("failed to open file!");
+
+        size_t file_size = static_cast<size_t>(file.tellg());
+        std::vector<char> buffer(file_size);
+
+        file.seekg(0);
+        file.read(buffer.data(), file_size);
+
+        return buffer;
+    }
+
     bool QueueFamilyIndices::is_complete()
     {
         return graphicsFamily.has_value() && presentFamily.has_value();
@@ -72,10 +92,15 @@ namespace saltus
         choose_physical_device();
         create_device();
         create_swap_chain();
+        create_render_pass();
+        create_graphics_pipeline();
     }
 
     VulkanRenderer::~VulkanRenderer()
     {
+        vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
+        vkDestroyPipelineLayout(device_, pipeline_layout_, nullptr);
+        vkDestroyRenderPass(device_, render_pass_, nullptr);
         for (const auto &view : swapchain_image_views_)
             vkDestroyImageView(device_, view, nullptr);
         vkDestroySwapchainKHR(device_, swapchain_, nullptr);
@@ -142,18 +167,32 @@ namespace saltus
                 details.present_modes.data()
             );
         }
-        
+
         return details;
+    }
+
+    VkShaderModule VulkanRenderer::create_shader_module(const std::vector<char> &code)
+    {
+        VkShaderModuleCreateInfo create_info{};
+        create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        create_info.codeSize = code.size();
+        create_info.pCode = reinterpret_cast<const uint32_t *>(code.data());
+        VkShaderModule shader_module;
+        VkResult result =
+            vkCreateShaderModule(device_, &create_info, nullptr, &shader_module);
+        if (result != VK_SUCCESS)
+            throw std::runtime_error("Could not create shader module");
+        return shader_module;
     }
 
     void VulkanRenderer::create_instance()
     {
         VkApplicationInfo appInfo = {};
         appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        appInfo.pApplicationName = "Hello Triangle";
-        appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+        appInfo.pApplicationName = "saltus engine";
+        appInfo.applicationVersion = VK_MAKE_VERSION(0, 0, 0);
         appInfo.pEngineName = "saltus";
-        appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+        appInfo.engineVersion = VK_MAKE_VERSION(0, 0, 0);
         appInfo.apiVersion = VK_API_VERSION_1_0;
 
         validation_enabled_ = ENABLE_VULKAN_VALIDATION &&
@@ -165,7 +204,7 @@ namespace saltus
         std::vector<const char *> layers;
         if (validation_enabled_)
             layers.insert(layers.end(), VALIDATION_LAYERS.cbegin(), VALIDATION_LAYERS.cend());
-        
+
         VkInstanceCreateInfo info = {};
         info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         info.pApplicationInfo = &appInfo;
@@ -247,7 +286,7 @@ namespace saltus
         QueueFamilyIndices families = get_physical_device_family_indices(physical_device_);
 
         std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
-        
+
         float priority = 1.f;
         for (uint32_t index : {
             families.graphicsFamily.value(), families.presentFamily.value(),
@@ -442,5 +481,150 @@ namespace saltus
             if (!result)
                 throw std::runtime_error("Failed to create an image view");
         }
+    }
+
+    void VulkanRenderer::create_render_pass()
+    {
+        VkAttachmentDescription color_attachment{};
+        color_attachment.format = swapchain_image_format_;
+        color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+
+        color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+        color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+        VkAttachmentReference color_attachment_ref{};
+        color_attachment_ref.attachment = 0;
+        color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+        VkSubpassDescription subpass{};
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &color_attachment_ref;
+
+        VkRenderPassCreateInfo render_pass_info{};
+        render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        render_pass_info.attachmentCount = 1;
+        render_pass_info.pAttachments = &color_attachment;
+        render_pass_info.subpassCount = 1;
+        render_pass_info.pSubpasses = &subpass;
+
+        VkResult result =
+            vkCreateRenderPass(device_, &render_pass_info, nullptr, &render_pass_);
+        if (result != VK_SUCCESS)
+            throw std::runtime_error("Could not create render pass");
+    }
+
+    void VulkanRenderer::create_graphics_pipeline()
+    {
+        auto vert_shader_code = read_full_file("saltus/shaders/shader.vert.spv");
+        auto frag_shader_code = read_full_file("saltus/shaders/shader.frag.spv");
+
+        auto vert_shader_module = create_shader_module(vert_shader_code);
+        auto frag_shader_module = create_shader_module(frag_shader_code);
+
+        VkPipelineShaderStageCreateInfo vert_shader_stage_info{};
+        vert_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        vert_shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
+        vert_shader_stage_info.module = vert_shader_module;
+        vert_shader_stage_info.pName = "main";
+
+        VkPipelineShaderStageCreateInfo frag_shader_stage_info{};
+        frag_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        frag_shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        frag_shader_stage_info.module = frag_shader_module;
+        frag_shader_stage_info.pName = "main";
+
+        VkPipelineShaderStageCreateInfo shader_stages[] = {
+            vert_shader_stage_info,
+            frag_shader_stage_info
+        };
+
+        VkDynamicState dynamic_states[] = {
+            VK_DYNAMIC_STATE_VIEWPORT,
+            VK_DYNAMIC_STATE_SCISSOR,
+        };
+
+        VkPipelineDynamicStateCreateInfo dynamic_state{};
+        dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamic_state.dynamicStateCount = sizeof(dynamic_states) / sizeof(*dynamic_states);
+        dynamic_state.pDynamicStates = dynamic_states;
+
+        VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+        vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+        VkPipelineInputAssemblyStateCreateInfo input_assembly{};
+        input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+        VkPipelineViewportStateCreateInfo viewport_state{};
+        viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        viewport_state.viewportCount = 1;
+        viewport_state.scissorCount = 1;
+
+        VkPipelineRasterizationStateCreateInfo rasterizer{};
+        rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        rasterizer.depthClampEnable = VK_FALSE;
+        rasterizer.rasterizerDiscardEnable = VK_FALSE;
+        rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+        rasterizer.lineWidth = 1.0f;
+        rasterizer.cullMode = VK_CULL_MODE_NONE;
+        rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+        rasterizer.depthBiasEnable = VK_FALSE;
+
+        VkPipelineMultisampleStateCreateInfo multisampling{};
+        multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        multisampling.sampleShadingEnable = VK_FALSE;
+        multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+        VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+        colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT
+                                            | VK_COLOR_COMPONENT_G_BIT
+                                            | VK_COLOR_COMPONENT_B_BIT
+                                            | VK_COLOR_COMPONENT_A_BIT;
+        colorBlendAttachment.blendEnable = VK_FALSE;
+
+        VkPipelineColorBlendStateCreateInfo colorBlending{};
+        colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        colorBlending.logicOpEnable = VK_FALSE;
+        colorBlending.attachmentCount = 1;
+        colorBlending.pAttachments = &colorBlendAttachment;
+
+        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+        pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+
+        VkResult result =
+            vkCreatePipelineLayout(device_, &pipelineLayoutInfo, nullptr, &pipeline_layout_);
+        if (result != VK_SUCCESS)
+            throw std::runtime_error("Could not create pipeline layout");
+
+        VkGraphicsPipelineCreateInfo pipeline_info{};
+        pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipeline_info.stageCount = sizeof(shader_stages) / sizeof(*shader_stages);
+        pipeline_info.pStages = shader_stages;
+        pipeline_info.pVertexInputState = &vertexInputInfo;
+        pipeline_info.pInputAssemblyState = &input_assembly;
+        pipeline_info.pViewportState = &viewport_state;
+        pipeline_info.pRasterizationState = &rasterizer;
+        pipeline_info.pMultisampleState = &multisampling;
+        pipeline_info.pDepthStencilState = nullptr;
+        pipeline_info.pColorBlendState = &colorBlending;
+        pipeline_info.pDynamicState = &dynamic_state;
+
+        pipeline_info.layout = pipeline_layout_;
+        pipeline_info.renderPass = render_pass_;
+        pipeline_info.subpass = 0;
+
+        result = vkCreateGraphicsPipelines(
+            device_, nullptr, 1, &pipeline_info, nullptr, &graphics_pipeline_
+        );
+        if (result != VK_SUCCESS)
+            throw std::runtime_error("Could not create graphics pipeline");
+
+        vkDestroyShaderModule(device_, vert_shader_module, nullptr);
+        vkDestroyShaderModule(device_, frag_shader_module, nullptr);
     }
 }
