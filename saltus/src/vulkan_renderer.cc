@@ -94,10 +94,13 @@ namespace saltus
         create_swap_chain();
         create_render_pass();
         create_graphics_pipeline();
+        create_frame_buffers();
     }
 
     VulkanRenderer::~VulkanRenderer()
     {
+        for (const auto &framebuffer : swapchain_framebuffers_)
+            vkDestroyFramebuffer(device_, framebuffer, nullptr);
         vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
         vkDestroyPipelineLayout(device_, pipeline_layout_, nullptr);
         vkDestroyRenderPass(device_, render_pass_, nullptr);
@@ -626,5 +629,28 @@ namespace saltus
 
         vkDestroyShaderModule(device_, vert_shader_module, nullptr);
         vkDestroyShaderModule(device_, frag_shader_module, nullptr);
+    }
+
+    void VulkanRenderer::create_frame_buffers()
+    {
+        swapchain_framebuffers_.clear();
+
+        for (const auto &view : swapchain_image_views_)
+        {
+            VkFramebufferCreateInfo framebuffer_info{};
+            framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            framebuffer_info.renderPass = render_pass_;
+            framebuffer_info.attachmentCount = 1;
+            framebuffer_info.pAttachments = &view;
+            framebuffer_info.width = swapchain_extent_.width;
+            framebuffer_info.height = swapchain_extent_.height;
+            framebuffer_info.layers = 1;
+
+            VkFramebuffer framebuffer;
+            VkResult result
+                = vkCreateFramebuffer(device_, &framebuffer_info, nullptr, &framebuffer);
+            if (result != VK_SUCCESS)
+                throw std::runtime_error("Could not create frame buffer");
+        }
     }
 }

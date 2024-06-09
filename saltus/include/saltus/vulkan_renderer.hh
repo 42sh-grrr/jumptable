@@ -45,6 +45,7 @@ namespace saltus
         VkSwapchainKHR swapchain_;
         std::vector<VkImage> swapchain_images_;
         std::vector<VkImageView> swapchain_image_views_;
+        std::vector<VkFramebuffer> swapchain_framebuffers_;
 
         VkRenderPass render_pass_;
         VkPipelineLayout pipeline_layout_;
@@ -72,5 +73,6 @@ namespace saltus
         void create_image_views();
         void create_render_pass();
         void create_graphics_pipeline();
+        void create_frame_buffers();
     };
 }
