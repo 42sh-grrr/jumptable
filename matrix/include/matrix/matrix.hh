@@ -41,6 +41,8 @@ namespace matrix
         const TYPE* operator[](int idx) const;
         TYPE* operator[](int idx);
 
+        Matrix<TYPE, COL, ROW> transpose() const;
+
         // friend std::ostream &operator<<(std::ostream &os,
         //                                 const Matrix<TYPE, ROW, COL>);
 

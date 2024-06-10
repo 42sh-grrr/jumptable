@@ -199,3 +199,26 @@ Test(libmatrix, multiply_assign)
         }
     }
 }
+
+Test(libmatrix, transpose_matrix)
+{
+    matrix::Matrix<int, 2, 4> mat1;
+    for (int i = 0; i < mat1.rows; i++)
+    {
+        for (int j = 0; j < mat1.cols; j++)
+        {
+            mat1[i][j] = i * j + 2 * i;
+        }
+    }
+    matrix::Matrix<int, 4, 2> mat = mat1.transpose();
+    for (int i = 0; i < mat.rows; i++)
+    {
+        for (int j = 0; j < mat.cols; j++)
+        {
+            int expected = mat1[j][i];
+            int actual = mat[i][j];
+            cr_expect_eq(actual, expected, "Expected %d. Got %d.", expected,
+                         actual);
+        }
+    }
+}

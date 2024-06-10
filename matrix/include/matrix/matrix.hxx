@@ -173,6 +173,20 @@ namespace matrix
         return mat_[idx];
     }
 
+    template <typename TYPE, int ROW, int COL>
+    Matrix<TYPE, COL, ROW> Matrix<TYPE, ROW, COL>::transpose() const
+    {
+        Matrix<TYPE, COL, ROW> res;
+        for (int i = 0; i < ROW; i++)
+        {
+            for (int j = 0; j < COL; j++)
+            {
+                res[j][i] = mat_[i][j];
+            }
+        }
+        return res;
+    }
+
     template <typename TYPE, int SIZE>
     Matrix<TYPE, SIZE, SIZE> identity()
     {
