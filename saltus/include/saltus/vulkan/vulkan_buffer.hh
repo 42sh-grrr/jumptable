@@ -23,7 +23,7 @@ namespace saltus::vulkan
         VkDeviceMemory memory() const;
 
         bool is_allocated() const;
-        void alloc();
+        void alloc(VkMemoryPropertyFlags memory_properties);
 
         void *map();
         void unmap();

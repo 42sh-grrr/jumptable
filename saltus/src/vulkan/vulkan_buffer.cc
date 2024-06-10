@@ -49,7 +49,7 @@ namespace saltus::vulkan
         return memory_ != VK_NULL_HANDLE;
     }
 
-    void VulkanBuffer::alloc()
+    void VulkanBuffer::alloc(VkMemoryPropertyFlags memory_properties)
     {
         if (memory_ != VK_NULL_HANDLE)
             throw std::runtime_error("Buffer already allocated");
@@ -62,8 +62,7 @@ namespace saltus::vulkan
         alloc_info.allocationSize = mem_reqs.size;
         alloc_info.memoryTypeIndex = find_mem_type(
             mem_reqs.memoryTypeBits,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+            memory_properties
         );
 
         VkResult result =
