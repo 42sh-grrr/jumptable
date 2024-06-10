@@ -1,6 +1,6 @@
 #include "saltus/renderer.hh"
 
-#include "saltus/vulkan_renderer.hh"
+#include "saltus/vulkan/vulkan_renderer.hh"
 
 namespace saltus
 {
@@ -14,11 +14,8 @@ namespace saltus
         
     }
 
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wunused-parameter"
     std::unique_ptr<Renderer> Renderer::create(Window &window)
     {
-        return std::make_unique<VulkanRenderer>(window);
+        return std::make_unique<vulkan::VulkanRenderer>(window);
     }
-    #pragma GCC diagnostic pop
 } // namespace saltus

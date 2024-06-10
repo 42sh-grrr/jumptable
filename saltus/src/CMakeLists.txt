@@ -4,5 +4,5 @@ target_sources(libsaltus INTERFACE
     window.cc
     window_events.cc
     renderer.cc
-    vulkan_renderer.cc
+    vulkan/vulkan_renderer.cc
 )

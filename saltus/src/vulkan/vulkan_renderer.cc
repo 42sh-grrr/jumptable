@@ -1,19 +1,16 @@
-#include "saltus/vulkan_renderer.hh"
+#include "saltus/vulkan/vulkan_renderer.hh"
 
+#include <limits>
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
-#include <iostream>
-#include <limits>
-#include <optional>
 #include <stdexcept>
-#include <vector>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vk_enum_string_helper.h>
 
-namespace saltus
+namespace saltus::vulkan
 {
     #ifdef NDEBUG
     constexpr const bool ENABLE_VULKAN_VALIDATION = false;
