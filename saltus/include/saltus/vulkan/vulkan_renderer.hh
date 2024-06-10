@@ -1,28 +1,14 @@
 #pragma once
 
 #include "saltus/renderer.hh"
+#include "saltus/vulkan/vulkan_device.hh"
+#include "saltus/vulkan/vulkan_instance.hh"
 
-#include <optional>
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
 namespace saltus::vulkan
 {
-    struct QueueFamilyIndices
-    {
-        std::optional<uint32_t> graphicsFamily;
-        std::optional<uint32_t> presentFamily;
-
-        bool is_complete();
-    };
-
-    struct SwapChainSupportDetails
-    {
-        VkSurfaceCapabilitiesKHR capabilities;
-        std::vector<VkSurfaceFormatKHR> formats;
-        std::vector<VkPresentModeKHR> present_modes;
-    };
-
     class VulkanRenderer: public Renderer
     {
     public:
@@ -32,16 +18,11 @@ namespace saltus::vulkan
         void render() override;
         void wait_for_idle() override;
 
+        std::shared_ptr<Shader> create_shader(ShaderCreateInfo info) override;
+
     private:
-        bool validation_enabled_;
-        
-        VkInstance instance_ = nullptr;
-        VkSurfaceKHR surface_ = nullptr;
-        VkPhysicalDevice physical_device_ = nullptr;
-        VkDevice device_ = nullptr;
-        
-        VkQueue graphics_queue_ = nullptr;
-        VkQueue present_queue_ = nullptr;
+        std::shared_ptr<VulkanInstance> instance_;
+        std::shared_ptr<VulkanDevice> device_;
 
         VkFormat swapchain_image_format_;
         VkExtent2D swapchain_extent_;
@@ -63,15 +44,6 @@ namespace saltus::vulkan
 
         int current_frame_ = 0;
 
-        QueueFamilyIndices get_physical_device_family_indices(VkPhysicalDevice device);
-        SwapChainSupportDetails get_physical_device_swap_chain_support_details(VkPhysicalDevice device);
-        VkShaderModule create_shader_module(const std::vector<char> &code);
-
-        void create_instance();
-        void create_surface();
-        bool is_physical_device_suitable(VkPhysicalDevice physical_device);
-        void choose_physical_device();
-        void create_device();
         VkSurfaceFormatKHR choose_swap_chain_format(
             const std::vector<VkSurfaceFormatKHR> &availableFormats
         );

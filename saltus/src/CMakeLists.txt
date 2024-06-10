@@ -1,8 +1,4 @@
 cmake_minimum_required(VERSION 3.21.2)
 
-target_sources(libsaltus PRIVATE
-    window.cc
-    window_events.cc
-    renderer.cc
-    vulkan/vulkan_renderer.cc
-)
+FILE(GLOB SOURCES *.cc vulkan/*.cc)
+target_sources(libsaltus PRIVATE ${SOURCES})

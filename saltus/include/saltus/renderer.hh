@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "saltus/window.hh"
+#include "saltus/shader.hh"
 
 namespace saltus
 {
@@ -17,6 +18,8 @@ namespace saltus
 
         virtual void render() = 0;
         virtual void wait_for_idle() = 0;
+
+        virtual std::shared_ptr<Shader> create_shader(ShaderCreateInfo) = 0;
 
     protected:
         Renderer(Window &window);

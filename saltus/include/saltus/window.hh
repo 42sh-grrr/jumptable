@@ -46,7 +46,7 @@ namespace saltus
 
         WindowGeometry request_geometry();
 
-        VkSurfaceKHR create_vulkan_surface(VkInstance instance);
+        VkSurfaceKHR create_vulkan_surface(VkInstance instance) const;
 
     protected:
         struct WindowData;

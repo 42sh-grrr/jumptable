@@ -9,6 +9,7 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vk_enum_string_helper.h>
+#include <saltus/vulkan/vulkan_shader.hh>
 
 namespace saltus::vulkan
 {
@@ -88,10 +89,9 @@ namespace saltus::vulkan
 
     VulkanRenderer::VulkanRenderer(Window &window): Renderer(window)
     {
-        create_instance();
-        create_surface();
-        choose_physical_device();
-        create_device();
+        instance_ = std::make_shared<VulkanInstance>();
+        device_ = std::make_shared<VulkanDevice>(window, instance_);
+        
         create_swap_chain();
         create_image_views();
         create_render_pass();
@@ -103,28 +103,28 @@ namespace saltus::vulkan
 
     VulkanRenderer::~VulkanRenderer()
     {
+        auto device = device_->device();
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            vkDestroySemaphore(device_, render_finished_semaphores_[i], nullptr);
-            vkDestroySemaphore(device_, image_available_semaphores_[i], nullptr);
-            vkDestroyFence(device_, in_flight_fences_[i], nullptr);
+            vkDestroySemaphore(device, render_finished_semaphores_[i], nullptr);
+            vkDestroySemaphore(device, image_available_semaphores_[i], nullptr);
+            vkDestroyFence(device, in_flight_fences_[i], nullptr);
         }
-        vkDestroyCommandPool(device_, command_pool_, nullptr);
-        vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
-        vkDestroyPipelineLayout(device_, pipeline_layout_, nullptr);
-        vkDestroyRenderPass(device_, render_pass_, nullptr);
+        vkDestroyCommandPool(device, command_pool_, nullptr);
+        vkDestroyPipeline(device, graphics_pipeline_, nullptr);
+        vkDestroyPipelineLayout(device, pipeline_layout_, nullptr);
+        vkDestroyRenderPass(device, render_pass_, nullptr);
         clean_swap_chain();
-        vkDestroySurfaceKHR(instance_, surface_, nullptr);
-        vkDestroyDevice(device_, nullptr);
-        vkDestroyInstance(instance_, nullptr);
     }
 
     void VulkanRenderer::render()
     {
-        vkWaitForFences(device_, 1, &in_flight_fences_[current_frame_], VK_TRUE, UINT64_MAX);
+        auto device = device_->device();
+
+        vkWaitForFences(device, 1, &in_flight_fences_[current_frame_], VK_TRUE, UINT64_MAX);
 
         uint32_t image_index;
         VkResult result = vkAcquireNextImageKHR(
-            device_, swapchain_, UINT32_MAX, image_available_semaphores_[current_frame_],
+            device, swapchain_, UINT32_MAX, image_available_semaphores_[current_frame_],
             nullptr, &image_index
         );
         if (result == VK_ERROR_OUT_OF_DATE_KHR)
@@ -136,7 +136,7 @@ namespace saltus::vulkan
         if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("Could not acquire an image");
 
-        vkResetFences(device_, 1, &in_flight_fences_[current_frame_]);
+        vkResetFences(device, 1, &in_flight_fences_[current_frame_]);
 
         record_command_buffer(command_buffers_[current_frame_], image_index);
 
@@ -160,7 +160,7 @@ namespace saltus::vulkan
         submit_info.signalSemaphoreCount = 1;
         submit_info.pSignalSemaphores = signal_semaphores;
 
-        result = vkQueueSubmit(graphics_queue_, 1, &submit_info, in_flight_fences_[current_frame_]);
+        result = vkQueueSubmit(device_->graphics_queue(), 1, &submit_info, in_flight_fences_[current_frame_]);
         if (result != VK_SUCCESS)
             throw std::runtime_error("Could not submit queue");
 
@@ -175,7 +175,7 @@ namespace saltus::vulkan
         present_info.pSwapchains = swapchains;
         present_info.pImageIndices = &image_index;
 
-        result = vkQueuePresentKHR(present_queue_, &present_info);
+        result = vkQueuePresentKHR(device_->present_queue(), &present_info);
         if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
             recreate_swap_chain();
@@ -193,232 +193,12 @@ namespace saltus::vulkan
 
     void VulkanRenderer::wait_for_idle()
     {
-        vkDeviceWaitIdle(device_);
+        vkDeviceWaitIdle(device_->device());
     }
 
-    QueueFamilyIndices VulkanRenderer::get_physical_device_family_indices(VkPhysicalDevice device)
+    std::shared_ptr<Shader> VulkanRenderer::create_shader(ShaderCreateInfo info)
     {
-        QueueFamilyIndices indices;
-
-        uint32_t queue_family_count = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, nullptr);
-        std::vector<VkQueueFamilyProperties> families(queue_family_count);
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, families.data());
-
-        int index = 0;
-        for (const auto &family : families)
-        {
-            if (family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-                indices.graphicsFamily = index;
-
-            VkBool32 supported = false;
-            vkGetPhysicalDeviceSurfaceSupportKHR(device, index, surface_, &supported);
-            if (supported)
-                indices.presentFamily = index;
-
-            index++;
-        }
-
-        return indices;
-    }
-
-    SwapChainSupportDetails
-    VulkanRenderer::get_physical_device_swap_chain_support_details(
-        VkPhysicalDevice physical_device
-    ) {
-        SwapChainSupportDetails details{};
-        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-            physical_device, surface_, &details.capabilities
-        );
-
-        uint32_t surface_format_count = 0;
-        vkGetPhysicalDeviceSurfaceFormatsKHR(
-            physical_device, surface_, &surface_format_count, nullptr
-        );
-        if (surface_format_count != 0)
-        {
-            details.formats.resize(surface_format_count);
-            vkGetPhysicalDeviceSurfaceFormatsKHR(
-                physical_device, surface_, &surface_format_count, details.formats.data()
-            );
-        }
-
-        uint32_t surface_present_modes_count = 0;
-        vkGetPhysicalDeviceSurfacePresentModesKHR(
-            physical_device, surface_, &surface_present_modes_count, nullptr
-        );
-        if (surface_present_modes_count != 0)
-        {
-            details.present_modes.resize(surface_present_modes_count);
-            vkGetPhysicalDeviceSurfacePresentModesKHR(
-                physical_device, surface_, &surface_present_modes_count,
-                details.present_modes.data()
-            );
-        }
-
-        return details;
-    }
-
-    VkShaderModule VulkanRenderer::create_shader_module(const std::vector<char> &code)
-    {
-        VkShaderModuleCreateInfo create_info{};
-        create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        create_info.codeSize = code.size();
-        create_info.pCode = reinterpret_cast<const uint32_t *>(code.data());
-        VkShaderModule shader_module;
-        VkResult result =
-            vkCreateShaderModule(device_, &create_info, nullptr, &shader_module);
-        if (result != VK_SUCCESS)
-            throw std::runtime_error("Could not create shader module");
-        return shader_module;
-    }
-
-    void VulkanRenderer::create_instance()
-    {
-        VkApplicationInfo appInfo = {};
-        appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        appInfo.pApplicationName = "saltus engine";
-        appInfo.applicationVersion = VK_MAKE_VERSION(0, 0, 0);
-        appInfo.pEngineName = "saltus";
-        appInfo.engineVersion = VK_MAKE_VERSION(0, 0, 0);
-        appInfo.apiVersion = VK_API_VERSION_1_0;
-
-        validation_enabled_ = ENABLE_VULKAN_VALIDATION &&
-            std::all_of(
-                VALIDATION_LAYERS.cbegin(), VALIDATION_LAYERS.cend(),
-                check_layer_is_supported
-            );
-
-        std::vector<const char *> layers;
-        if (validation_enabled_)
-            layers.insert(layers.end(), VALIDATION_LAYERS.cbegin(), VALIDATION_LAYERS.cend());
-
-        VkInstanceCreateInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-        info.pApplicationInfo = &appInfo;
-
-        info.enabledLayerCount = layers.size();
-        info.ppEnabledLayerNames = layers.data();
-
-        info.enabledExtensionCount = INSTANCE_EXTENSIONS.size();
-        info.ppEnabledExtensionNames = INSTANCE_EXTENSIONS.data();
-
-        VkResult result = vkCreateInstance(&info, nullptr, &instance_);
-        if (result != VK_SUCCESS)
-            throw std::runtime_error("Vulkan error while creating instance");
-    }
-
-    void VulkanRenderer::create_surface()
-    {
-        surface_ = window_.create_vulkan_surface(instance_);
-    }
-
-    bool VulkanRenderer::is_physical_device_suitable(VkPhysicalDevice physical_device)
-    {
-        QueueFamilyIndices families = get_physical_device_family_indices(physical_device);
-        if (!families.is_complete())
-            return false;
-
-        uint32_t extensions_count = 0;
-        vkEnumerateDeviceExtensionProperties(
-            physical_device, nullptr, &extensions_count, nullptr
-        );
-        std::vector<VkExtensionProperties> extensions(extensions_count);
-        vkEnumerateDeviceExtensionProperties(
-            physical_device, nullptr, &extensions_count, extensions.data()
-        );
-
-        bool support_extensions = std::all_of(
-            DEVICE_EXTENSIONS.cbegin(), DEVICE_EXTENSIONS.cend(),
-            [extensions](const char *required) {
-                return std::any_of(
-                    extensions.cbegin(), extensions.cend(),
-                    [required](const VkExtensionProperties &extension) {
-                        return strcmp(extension.extensionName, required) == 0;
-                    }
-                );
-            }
-        );
-        if (!support_extensions)
-            return false;
-
-        SwapChainSupportDetails swapchain_support =
-            get_physical_device_swap_chain_support_details(physical_device);
-        if (swapchain_support.formats.empty() || swapchain_support.present_modes.empty())
-            return false;
-
-        return true;
-    }
-
-    void VulkanRenderer::choose_physical_device()
-    {
-        uint32_t device_count = 0;
-        vkEnumeratePhysicalDevices(instance_, &device_count, nullptr);
-        if (device_count == 0)
-            throw std::runtime_error("Could not find any physical device with Vulkan support");
-        std::vector<VkPhysicalDevice> physical_devices(device_count);
-        vkEnumeratePhysicalDevices(instance_, &device_count, physical_devices.data());
-
-        auto found = std::find_if(
-            physical_devices.cbegin(), physical_devices.cend(),
-            [this](auto device) { return is_physical_device_suitable(device); }
-        );
-        physical_device_ = found == physical_devices.cend() ? nullptr : *found;
-
-        if (physical_device_ == nullptr)
-            throw std::runtime_error("Could not find any suitable physical device");
-    }
-
-    void VulkanRenderer::create_device()
-    {
-        QueueFamilyIndices families = get_physical_device_family_indices(physical_device_);
-
-        std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
-
-        float priority = 1.f;
-        for (uint32_t index : {
-            families.graphicsFamily.value(), families.presentFamily.value(),
-        })
-        {
-            VkDeviceQueueCreateInfo info{};
-            info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-            info.queueFamilyIndex = index;
-            info.queueCount = 1;
-            info.pQueuePriorities = &priority;
-            queue_create_infos.push_back(info);
-        }
-
-        VkPhysicalDeviceFeatures device_features{};
-
-        VkDeviceCreateInfo create_info{};
-        create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-
-        create_info.queueCreateInfoCount = queue_create_infos.size();
-        create_info.pQueueCreateInfos = queue_create_infos.data();
-
-        create_info.pEnabledFeatures = &device_features;
-
-        create_info.enabledExtensionCount = DEVICE_EXTENSIONS.size();
-        create_info.ppEnabledExtensionNames = DEVICE_EXTENSIONS.data();
-
-        if (validation_enabled_)
-        {
-            create_info.enabledLayerCount = VALIDATION_LAYERS.size();
-            create_info.ppEnabledLayerNames = VALIDATION_LAYERS.data();
-        }
-        else
-        {
-            create_info.enabledLayerCount = 0;
-        }
-
-        VkResult result = vkCreateDevice(physical_device_, &create_info, nullptr, &device_);
-        if (result != VK_SUCCESS)
-        {
-            throw std::runtime_error("Vulkand device creation error");
-        }
-
-        vkGetDeviceQueue(device_, families.graphicsFamily.value(), 0, &graphics_queue_);
-        vkGetDeviceQueue(device_, families.presentFamily.value(), 0, &present_queue_);
+        return std::make_shared<VulkanShader>(device_, info);
     }
 
     VkSurfaceFormatKHR VulkanRenderer::choose_swap_chain_format(
@@ -478,7 +258,7 @@ namespace saltus::vulkan
     void VulkanRenderer::create_swap_chain()
     {
         SwapChainSupportDetails swap_chain_support =
-            get_physical_device_swap_chain_support_details(physical_device_);
+            device_->get_physical_device_swap_chain_support_details();
 
         VkSurfaceFormatKHR surface_format =
             choose_swap_chain_format(swap_chain_support.formats);
@@ -496,7 +276,7 @@ namespace saltus::vulkan
 
         VkSwapchainCreateInfoKHR create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        create_info.surface = surface_;
+        create_info.surface = device_->surface();
         create_info.minImageCount = image_count;
         create_info.imageFormat = surface_format.format;
         create_info.imageColorSpace = surface_format.colorSpace;
@@ -504,8 +284,7 @@ namespace saltus::vulkan
         create_info.imageArrayLayers = 1;
         create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-        QueueFamilyIndices indices =
-            get_physical_device_family_indices(physical_device_);
+        QueueFamilyIndices indices = device_->get_physical_device_family_indices();
 
         uint32_t queue_family_indices[] = {
             indices.graphicsFamily.value(),
@@ -529,17 +308,17 @@ namespace saltus::vulkan
         create_info.clipped = VK_TRUE;
 
         VkResult result =
-            vkCreateSwapchainKHR(device_, &create_info, nullptr, &swapchain_);
+            vkCreateSwapchainKHR(device_->device(), &create_info, nullptr, &swapchain_);
         if (result != VK_SUCCESS)
             throw std::runtime_error("Could not create swap chain");
 
         uint32_t real_image_count = 0;
         vkGetSwapchainImagesKHR(
-            device_, swapchain_, &real_image_count, nullptr
+            *device_, swapchain_, &real_image_count, nullptr
         );
         swapchain_images_.resize(real_image_count);
         vkGetSwapchainImagesKHR(
-            device_, swapchain_, &real_image_count, swapchain_images_.data()
+            *device_, swapchain_, &real_image_count, swapchain_images_.data()
         );
     }
 
@@ -565,7 +344,7 @@ namespace saltus::vulkan
             create_info.subresourceRange.layerCount = 1;
             VkImageView image_view;
             VkResult result =
-                vkCreateImageView(device_, &create_info, nullptr, &image_view);
+                vkCreateImageView(*device_, &create_info, nullptr, &image_view);
             if (result != VK_SUCCESS)
                 throw std::runtime_error("Failed to create an image view");
             swapchain_image_views_.push_back(image_view);
@@ -611,29 +390,30 @@ namespace saltus::vulkan
         render_pass_info.pDependencies = &dependency;
 
         VkResult result =
-            vkCreateRenderPass(device_, &render_pass_info, nullptr, &render_pass_);
+            vkCreateRenderPass(*device_, &render_pass_info, nullptr, &render_pass_);
         if (result != VK_SUCCESS)
             throw std::runtime_error("Could not create render pass");
     }
 
     void VulkanRenderer::create_graphics_pipeline()
     {
-        auto vert_shader_code = read_full_file("saltus/shaders/shader.vert.spv");
-        auto frag_shader_code = read_full_file("saltus/shaders/shader.frag.spv");
-
-        auto vert_shader_module = create_shader_module(vert_shader_code);
-        auto frag_shader_module = create_shader_module(frag_shader_code);
+        VulkanShader vert_shader (device_, {
+            .source_code_ = read_full_file("saltus/shaders/shader.vert.spv"),
+        });
+        VulkanShader frag_shader (device_, {
+            .source_code_ = read_full_file("saltus/shaders/shader.frag.spv"),
+        });
 
         VkPipelineShaderStageCreateInfo vert_shader_stage_info{};
         vert_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         vert_shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vert_shader_stage_info.module = vert_shader_module;
+        vert_shader_stage_info.module = vert_shader.module();
         vert_shader_stage_info.pName = "main";
 
         VkPipelineShaderStageCreateInfo frag_shader_stage_info{};
         frag_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         frag_shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        frag_shader_stage_info.module = frag_shader_module;
+        frag_shader_stage_info.module = frag_shader.module();
         frag_shader_stage_info.pName = "main";
 
         VkPipelineShaderStageCreateInfo shader_stages[] = {
@@ -695,7 +475,7 @@ namespace saltus::vulkan
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
         VkResult result =
-            vkCreatePipelineLayout(device_, &pipelineLayoutInfo, nullptr, &pipeline_layout_);
+            vkCreatePipelineLayout(*device_, &pipelineLayoutInfo, nullptr, &pipeline_layout_);
         if (result != VK_SUCCESS)
             throw std::runtime_error("Could not create pipeline layout");
 
@@ -717,13 +497,10 @@ namespace saltus::vulkan
         pipeline_info.subpass = 0;
 
         result = vkCreateGraphicsPipelines(
-            device_, nullptr, 1, &pipeline_info, nullptr, &graphics_pipeline_
+            *device_, nullptr, 1, &pipeline_info, nullptr, &graphics_pipeline_
         );
         if (result != VK_SUCCESS)
             throw std::runtime_error("Could not create graphics pipeline");
-
-        vkDestroyShaderModule(device_, vert_shader_module, nullptr);
-        vkDestroyShaderModule(device_, frag_shader_module, nullptr);
     }
 
     void VulkanRenderer::create_frame_buffers()
@@ -743,7 +520,7 @@ namespace saltus::vulkan
 
             VkFramebuffer framebuffer;
             VkResult result
-                = vkCreateFramebuffer(device_, &framebuffer_info, nullptr, &framebuffer);
+                = vkCreateFramebuffer(*device_, &framebuffer_info, nullptr, &framebuffer);
             if (result != VK_SUCCESS)
                 throw std::runtime_error("Could not create frame buffer");
             swapchain_framebuffers_.push_back(framebuffer);
@@ -753,7 +530,7 @@ namespace saltus::vulkan
     void VulkanRenderer::create_command_pool_and_buffers()
     {
         QueueFamilyIndices family_indices =
-            get_physical_device_family_indices(physical_device_);
+            device_->get_physical_device_family_indices();
 
         VkCommandPoolCreateInfo pool_info{};
         pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -761,7 +538,7 @@ namespace saltus::vulkan
         pool_info.queueFamilyIndex = family_indices.graphicsFamily.value();
 
         VkResult result =
-            vkCreateCommandPool(device_, &pool_info, nullptr, &command_pool_);
+            vkCreateCommandPool(*device_, &pool_info, nullptr, &command_pool_);
         if (result != VK_SUCCESS)
             throw std::runtime_error("Could not create command pool");
 
@@ -773,7 +550,7 @@ namespace saltus::vulkan
 
         command_buffers_.resize(MAX_FRAMES_IN_FLIGHT);
 
-        result = vkAllocateCommandBuffers(device_, &buffer_alloc_info, command_buffers_.data());
+        result = vkAllocateCommandBuffers(*device_, &buffer_alloc_info, command_buffers_.data());
         if (result != VK_SUCCESS)
             throw std::runtime_error("Failed to allocate command buffer");
     }
@@ -793,13 +570,13 @@ namespace saltus::vulkan
         for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
             VkResult result;
-            result = vkCreateSemaphore(device_, &semaphore_info, nullptr, &image_available_semaphores_[i]);
+            result = vkCreateSemaphore(*device_, &semaphore_info, nullptr, &image_available_semaphores_[i]);
             if (result != VK_SUCCESS)
                 throw std::runtime_error("Could not create semaphore");
-            result = vkCreateSemaphore(device_, &semaphore_info, nullptr, &render_finished_semaphores_[i]);
+            result = vkCreateSemaphore(*device_, &semaphore_info, nullptr, &render_finished_semaphores_[i]);
             if (result != VK_SUCCESS)
                 throw std::runtime_error("Could not create semaphore");
-            result = vkCreateFence(device_, &fence_info, nullptr, &in_flight_fences_[i]);
+            result = vkCreateFence(*device_, &fence_info, nullptr, &in_flight_fences_[i]);
             if (result != VK_SUCCESS)
                 throw std::runtime_error("Could not create fence");
         }
@@ -808,15 +585,15 @@ namespace saltus::vulkan
     void VulkanRenderer::clean_swap_chain()
     {
         for (const auto &framebuffer : swapchain_framebuffers_)
-            vkDestroyFramebuffer(device_, framebuffer, nullptr);
+            vkDestroyFramebuffer(*device_, framebuffer, nullptr);
         for (const auto &view : swapchain_image_views_)
-            vkDestroyImageView(device_, view, nullptr);
-        vkDestroySwapchainKHR(device_, swapchain_, nullptr);
+            vkDestroyImageView(*device_, view, nullptr);
+        vkDestroySwapchainKHR(*device_, swapchain_, nullptr);
     }
 
     void VulkanRenderer::recreate_swap_chain()
     {
-        vkDeviceWaitIdle(device_);
+        vkDeviceWaitIdle(*device_);
 
         clean_swap_chain();
 

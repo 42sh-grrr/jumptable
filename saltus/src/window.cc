@@ -249,7 +249,7 @@ namespace saltus
         };
     }
     
-    VkSurfaceKHR Window::create_vulkan_surface(VkInstance instance)
+    VkSurfaceKHR Window::create_vulkan_surface(VkInstance instance) const
     {
         VkXcbSurfaceCreateInfoKHR create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
