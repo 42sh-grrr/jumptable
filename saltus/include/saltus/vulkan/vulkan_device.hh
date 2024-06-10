@@ -52,12 +52,12 @@ namespace saltus::vulkan
     private:
         std::shared_ptr<VulkanInstance> instance_;
 
-        VkSurfaceKHR surface_ = nullptr;
-        VkPhysicalDevice physical_device_ = nullptr;
-        VkDevice device_ = nullptr;
+        VkSurfaceKHR surface_ = VK_NULL_HANDLE;
+        VkPhysicalDevice physical_device_ = VK_NULL_HANDLE;
+        VkDevice device_ = VK_NULL_HANDLE;
 
-        VkQueue graphics_queue_ = nullptr;
-        VkQueue present_queue_ = nullptr;
+        VkQueue graphics_queue_ = VK_NULL_HANDLE;
+        VkQueue present_queue_ = VK_NULL_HANDLE;
 
         bool is_physical_device_suitable(VkPhysicalDevice physical_device);
         void choose_physical_device();
