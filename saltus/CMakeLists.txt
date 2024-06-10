@@ -5,6 +5,11 @@ add_library(libsaltus STATIC)
 
 add_subdirectory(src)
 
+find_library(VULKAN NAMES vulkan libvulkan REQUIRED)
+find_library(XCB NAMES xcb libxcb Xcb REQUIRED)
+find_library(XCB_ICCCM NAMES xcb-icccm libxcb-icccm REQUIRED)
+
 target_include_directories(libsaltus PUBLIC include)
-# Sorry
-target_link_options(libsaltus PUBLIC -lxcb -lxcb-ewmh -lxcb-icccm -lvulkan)
+target_link_libraries(libsaltus PRIVATE ${VULKAN})
+target_link_libraries(libsaltus PRIVATE ${XCB})
+target_link_libraries(libsaltus PRIVATE ${XCB_ICCCM})
