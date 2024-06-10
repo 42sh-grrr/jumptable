@@ -30,6 +30,9 @@ namespace saltus::vulkan
         VulkanDevice(const Window &window, std::shared_ptr<VulkanInstance> instance);
         ~VulkanDevice();
 
+        VulkanDevice(const VulkanDevice &) = delete;
+        VulkanDevice &operator =(const VulkanDevice &) = delete;
+
         operator VkDevice() const;
 
         QueueFamilyIndices get_physical_device_family_indices() const;

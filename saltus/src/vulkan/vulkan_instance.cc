@@ -78,6 +78,11 @@ namespace saltus::vulkan
             throw std::runtime_error("Vulkan error while creating instance");
     }
 
+    VulkanInstance::~VulkanInstance()
+    {
+        vkDestroyInstance(instance_, nullptr);
+    }
+
     VulkanInstance::operator VkInstance() const
     {
         return instance_;

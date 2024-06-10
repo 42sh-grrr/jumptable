@@ -8,6 +8,10 @@ namespace saltus::vulkan
     public:
         VulkanInstance();
         VulkanInstance(bool try_enable_validation);
+        ~VulkanInstance();
+
+        VulkanInstance(const VulkanInstance &) = delete;
+        VulkanInstance &operator =(const VulkanInstance &) = delete;
 
         operator VkInstance() const;
 

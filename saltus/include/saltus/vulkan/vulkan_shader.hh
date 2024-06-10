@@ -14,6 +14,9 @@ namespace saltus::vulkan
         VulkanShader(std::shared_ptr<VulkanDevice> device, ShaderCreateInfo info);
         ~VulkanShader();
 
+        VulkanShader(const VulkanShader &) = delete;
+        VulkanShader &operator =(const VulkanShader &) = delete;
+
         VkShaderModule module() const;
 
     private:
