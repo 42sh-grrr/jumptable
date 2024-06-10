@@ -55,11 +55,13 @@ namespace saltus
         VkPipeline graphics_pipeline_;
 
         VkCommandPool command_pool_;
-        VkCommandBuffer command_buffer_;
+        std::vector<VkCommandBuffer> command_buffers_;
 
-        VkSemaphore image_available_semaphore_;
-        VkSemaphore render_finished_semaphore_;
-        VkFence in_flight_fence_;
+        std::vector<VkSemaphore> image_available_semaphores_;
+        std::vector<VkSemaphore> render_finished_semaphores_;
+        std::vector<VkFence> in_flight_fences_;
+
+        int current_frame_ = 0;
 
         QueueFamilyIndices get_physical_device_family_indices(VkPhysicalDevice device);
         SwapChainSupportDetails get_physical_device_swap_chain_support_details(VkPhysicalDevice device);
@@ -84,7 +86,7 @@ namespace saltus
         void create_render_pass();
         void create_graphics_pipeline();
         void create_frame_buffers();
-        void create_command_pool_and_buffer();
+        void create_command_pool_and_buffers();
         void create_sync_objects();
 
         void clean_swap_chain();

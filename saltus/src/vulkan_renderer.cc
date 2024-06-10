@@ -31,6 +31,8 @@ namespace saltus
         "VK_KHR_swapchain"
     };
 
+    const int MAX_FRAMES_IN_FLIGHT = 2;
+
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wunused-function"
     static bool check_extension_is_supported(const char *name)
@@ -98,15 +100,17 @@ namespace saltus
         create_render_pass();
         create_graphics_pipeline();
         create_frame_buffers();
-        create_command_pool_and_buffer();
+        create_command_pool_and_buffers();
         create_sync_objects();
     }
 
     VulkanRenderer::~VulkanRenderer()
     {
-        vkDestroySemaphore(device_, image_available_semaphore_, nullptr);
-        vkDestroySemaphore(device_, render_finished_semaphore_, nullptr);
-        vkDestroyFence(device_, in_flight_fence_, nullptr);
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            vkDestroySemaphore(device_, render_finished_semaphores_[i], nullptr);
+            vkDestroySemaphore(device_, image_available_semaphores_[i], nullptr);
+            vkDestroyFence(device_, in_flight_fences_[i], nullptr);
+        }
         vkDestroyCommandPool(device_, command_pool_, nullptr);
         vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
         vkDestroyPipelineLayout(device_, pipeline_layout_, nullptr);
@@ -119,11 +123,11 @@ namespace saltus
 
     void VulkanRenderer::render()
     {
-        vkWaitForFences(device_, 1, &in_flight_fence_, VK_TRUE, UINT64_MAX);
+        vkWaitForFences(device_, 1, &in_flight_fences_[current_frame_], VK_TRUE, UINT64_MAX);
 
         uint32_t image_index;
         VkResult result = vkAcquireNextImageKHR(
-            device_, swapchain_, UINT32_MAX, image_available_semaphore_,
+            device_, swapchain_, UINT32_MAX, image_available_semaphores_[current_frame_],
             nullptr, &image_index
         );
         if (result == VK_ERROR_OUT_OF_DATE_KHR)
@@ -135,18 +139,18 @@ namespace saltus
         if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("Could not acquire an image");
 
-        vkResetFences(device_, 1, &in_flight_fence_);
+        vkResetFences(device_, 1, &in_flight_fences_[current_frame_]);
 
-        record_command_buffer(command_buffer_, image_index);
+        record_command_buffer(command_buffers_[current_frame_], image_index);
 
         VkSemaphore wait_semaphores[] = {
-            image_available_semaphore_
+            image_available_semaphores_[current_frame_]
         };
         VkPipelineStageFlags wait_stages[] = {
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
         };
         VkSemaphore signal_semaphores[] = {
-            render_finished_semaphore_
+            render_finished_semaphores_[current_frame_]
         };
 
         VkSubmitInfo submit_info{};
@@ -155,11 +159,11 @@ namespace saltus
         submit_info.pWaitSemaphores = wait_semaphores;
         submit_info.pWaitDstStageMask = wait_stages;
         submit_info.commandBufferCount = 1;
-        submit_info.pCommandBuffers = &command_buffer_;
+        submit_info.pCommandBuffers = &command_buffers_[current_frame_];
         submit_info.signalSemaphoreCount = 1;
         submit_info.pSignalSemaphores = signal_semaphores;
 
-        result = vkQueueSubmit(graphics_queue_, 1, &submit_info, in_flight_fence_);
+        result = vkQueueSubmit(graphics_queue_, 1, &submit_info, in_flight_fences_[current_frame_]);
         if (result != VK_SUCCESS)
             throw std::runtime_error("Could not submit queue");
 
@@ -186,6 +190,8 @@ namespace saltus
         }
         else if (result != VK_SUCCESS)
             throw std::runtime_error("Could not present to queue");
+
+        current_frame_ = (current_frame_+1) % MAX_FRAMES_IN_FLIGHT;
     }
 
     void VulkanRenderer::wait_for_idle()
@@ -747,7 +753,7 @@ namespace saltus
         }
     }
 
-    void VulkanRenderer::create_command_pool_and_buffer()
+    void VulkanRenderer::create_command_pool_and_buffers()
     {
         QueueFamilyIndices family_indices =
             get_physical_device_family_indices(physical_device_);
@@ -766,9 +772,11 @@ namespace saltus
         buffer_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         buffer_alloc_info.commandPool = command_pool_;
         buffer_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        buffer_alloc_info.commandBufferCount = 1;
+        buffer_alloc_info.commandBufferCount = MAX_FRAMES_IN_FLIGHT;
 
-        result = vkAllocateCommandBuffers(device_, &buffer_alloc_info, &command_buffer_);
+        command_buffers_.resize(MAX_FRAMES_IN_FLIGHT);
+
+        result = vkAllocateCommandBuffers(device_, &buffer_alloc_info, command_buffers_.data());
         if (result != VK_SUCCESS)
             throw std::runtime_error("Failed to allocate command buffer");
     }
@@ -780,17 +788,24 @@ namespace saltus
         VkFenceCreateInfo fence_info{};
         fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        
-        VkResult result;
-        result = vkCreateSemaphore(device_, &semaphore_info, nullptr, &image_available_semaphore_);
-        if (result != VK_SUCCESS)
-            throw std::runtime_error("Could not create semaphore");
-        result = vkCreateSemaphore(device_, &semaphore_info, nullptr, &render_finished_semaphore_);
-        if (result != VK_SUCCESS)
-            throw std::runtime_error("Could not create semaphore");
-        result = vkCreateFence(device_, &fence_info, nullptr, &in_flight_fence_);
-        if (result != VK_SUCCESS)
-            throw std::runtime_error("Could not create fence");
+
+        image_available_semaphores_.resize(MAX_FRAMES_IN_FLIGHT);
+        render_finished_semaphores_.resize(MAX_FRAMES_IN_FLIGHT);
+        in_flight_fences_.resize(MAX_FRAMES_IN_FLIGHT);
+
+        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+        {
+            VkResult result;
+            result = vkCreateSemaphore(device_, &semaphore_info, nullptr, &image_available_semaphores_[i]);
+            if (result != VK_SUCCESS)
+                throw std::runtime_error("Could not create semaphore");
+            result = vkCreateSemaphore(device_, &semaphore_info, nullptr, &render_finished_semaphores_[i]);
+            if (result != VK_SUCCESS)
+                throw std::runtime_error("Could not create semaphore");
+            result = vkCreateFence(device_, &fence_info, nullptr, &in_flight_fences_[i]);
+            if (result != VK_SUCCESS)
+                throw std::runtime_error("Could not create fence");
+        }
     }
 
     void VulkanRenderer::clean_swap_chain()
@@ -859,9 +874,9 @@ namespace saltus
 
         vkCmdDraw(command_buffer, 3, 1, 0, 0);
 
-        vkCmdEndRenderPass(command_buffer_);
+        vkCmdEndRenderPass(command_buffers_[current_frame_]);
 
-        result = vkEndCommandBuffer(command_buffer_);
+        result = vkEndCommandBuffer(command_buffers_[current_frame_]);
         if (result != VK_SUCCESS)
             throw std::runtime_error("Command buffer recording (gone wrong !!)");
     }
