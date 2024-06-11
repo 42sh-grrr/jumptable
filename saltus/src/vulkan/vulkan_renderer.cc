@@ -398,10 +398,10 @@ namespace saltus::vulkan
     void VulkanRenderer::create_graphics_pipeline()
     {
         VulkanShader vert_shader (device_, {
-            .source_code_ = read_full_file("saltus/shaders/shader.vert.spv"),
+            .source_code = read_full_file("saltus/shaders/shader.vert.spv"),
         });
         VulkanShader frag_shader (device_, {
-            .source_code_ = read_full_file("saltus/shaders/shader.frag.spv"),
+            .source_code = read_full_file("saltus/shaders/shader.frag.spv"),
         });
 
         VkPipelineShaderStageCreateInfo vert_shader_stage_info{};

@@ -19,6 +19,8 @@ namespace saltus::vulkan
 
         VkShaderModule module() const;
 
+        VkPipelineShaderStageCreateInfo stage_create_info() const;
+
     private:
         std::shared_ptr<VulkanDevice> device_;
 
