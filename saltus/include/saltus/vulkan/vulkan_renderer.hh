@@ -19,6 +19,8 @@ namespace saltus::vulkan
         void wait_for_idle() override;
 
         std::shared_ptr<Shader> create_shader(ShaderCreateInfo info) override;
+        std::shared_ptr<Material> create_material(MaterialCreateInfo) override;
+        std::shared_ptr<Mesh> create_mesh(MeshCreateInfo) override;
 
     private:
         std::shared_ptr<VulkanInstance> instance_;

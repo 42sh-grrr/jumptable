@@ -1,7 +1,18 @@
+#pragma once
+
+#include <cstdint>
 
 namespace saltus
 {
-    enum class VertexAttributeScalarType
+    enum class PritmitiveTopology: uint8_t
+    {
+        TriangleList,
+        TriangleStrip,
+        LineList,
+        LineStrip,
+    };
+
+    enum class VertexAttributeScalarType: uint8_t
     {
         u8,
         i8,
@@ -15,7 +26,7 @@ namespace saltus
         f64,
     };
 
-    enum class VertexAttributeFormat
+    enum class VertexAttributeFormat: uint8_t
     {
         Scalar,
         Vec2,

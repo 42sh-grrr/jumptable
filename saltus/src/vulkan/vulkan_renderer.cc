@@ -10,6 +10,8 @@
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vk_enum_string_helper.h>
 #include <saltus/vulkan/vulkan_shader.hh>
+#include "saltus/vulkan/vulkan_material.hh"
+#include "saltus/vulkan/vulkan_mesh.hh"
 
 namespace saltus::vulkan
 {
@@ -199,6 +201,16 @@ namespace saltus::vulkan
     std::shared_ptr<Shader> VulkanRenderer::create_shader(ShaderCreateInfo info)
     {
         return std::make_shared<VulkanShader>(device_, info);
+    }
+
+    std::shared_ptr<Material> VulkanRenderer::create_material(MaterialCreateInfo info)
+    {
+        return std::make_shared<VulkanMaterial>(device_, info);
+    }
+
+    std::shared_ptr<Mesh> VulkanRenderer::create_mesh(MeshCreateInfo info)
+    {
+        return std::make_shared<VulkanMesh>(device_, info);
     }
 
     VkSurfaceFormatKHR VulkanRenderer::choose_swap_chain_format(

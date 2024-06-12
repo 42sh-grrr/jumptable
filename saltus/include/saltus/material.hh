@@ -8,7 +8,7 @@
 
 namespace saltus
 {
-    enum class MaterialCullMode
+    enum class MaterialCullMode: uint8_t
     {
         /// Show both sides
         None,
@@ -20,7 +20,7 @@ namespace saltus
         All,
     };
 
-    enum class MaterialFrontFace
+    enum class MaterialFrontFace: uint8_t
     {
         CounterClockwise,
         Clockwise,
@@ -42,6 +42,7 @@ namespace saltus
 
         MaterialFrontFace front_face;
         MaterialCullMode cull_mode;
+        PritmitiveTopology primitive_topology;
 
         MaterialCreateInfo();
     };
@@ -58,6 +59,10 @@ namespace saltus
         const std::shared_ptr<Shader> &vertex_shader() const;
         const std::shared_ptr<Shader> &fragment_shader() const;
 
+        MaterialFrontFace front_face() const;
+        MaterialCullMode cull_mode() const;
+        PritmitiveTopology primitive_topology() const;
+        
     protected:
         Material(MaterialCreateInfo create_info);
 
@@ -66,6 +71,10 @@ namespace saltus
 
         std::shared_ptr<Shader> vertex_shader_;
         std::shared_ptr<Shader> fragment_shader_;
+
+        MaterialFrontFace front_face_;
+        MaterialCullMode cull_mode_;
+        PritmitiveTopology primitive_topology_;
     };
 } // namespace saltus
 

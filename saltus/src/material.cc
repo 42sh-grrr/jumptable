@@ -36,4 +36,19 @@ namespace saltus
     {
         return fragment_shader_;
     }
+
+    MaterialFrontFace Material::front_face() const
+    {
+        return front_face_;
+    }
+
+    MaterialCullMode Material::cull_mode() const
+    {
+        return cull_mode_;
+    }
+
+    PritmitiveTopology Material::primitive_topology() const
+    {
+        return primitive_topology_;
+    }
 }
