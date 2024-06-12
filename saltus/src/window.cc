@@ -235,7 +235,7 @@ namespace saltus
         return data_->window_event_from_xcb_event(xcb_wait_for_event(data_->connection));
     }
 
-    WindowGeometry Window::request_geometry()
+    WindowGeometry Window::request_geometry() const
     {
         auto cookie = xcb_get_geometry(data_->connection, data_->window_id);
         auto reply = xcb_get_geometry_reply(data_->connection, cookie, nullptr);

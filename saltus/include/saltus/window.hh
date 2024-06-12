@@ -44,7 +44,7 @@ namespace saltus
         std::unique_ptr<WindowEvent> poll_event();
         std::unique_ptr<WindowEvent> wait_event();
 
-        WindowGeometry request_geometry();
+        WindowGeometry request_geometry() const;
 
         VkSurfaceKHR create_vulkan_surface(VkInstance instance) const;
 

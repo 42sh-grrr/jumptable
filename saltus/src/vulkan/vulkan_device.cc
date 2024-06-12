@@ -1,6 +1,8 @@
 #include "saltus/vulkan/vulkan_device.hh"
 #include <algorithm>
 #include <cstring>
+#include <iostream>
+#include <set>
 #include <stdexcept>
 #include <vector>
 #include <vulkan/vulkan_core.h>
@@ -8,24 +10,27 @@
 
 namespace saltus::vulkan
 {
-    #ifdef NDEBUG
-    constexpr const bool ENABLE_VULKAN_VALIDATION = false;
-    #else // NDEBUG
-    constexpr const bool ENABLE_VULKAN_VALIDATION = true;
-    #endif // NDEBUG
     const std::vector<const char *> VALIDATION_LAYERS = {
-        "VK_LAYER_KHRONOS_validation",
-    };
-    const std::vector<const char *> INSTANCE_EXTENSIONS = {
-        "VK_KHR_surface",
-        "VK_KHR_xcb_surface",
+        "VK_LAYER_KHRONOS_VALIDATION",
     };
     const std::vector<const char *> DEVICE_EXTENSIONS = {
-        "VK_KHR_swapchain"
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+    };
+    VkPhysicalDeviceDynamicRenderingFeaturesKHR DYNAMIC_RENDERING_FEATURES = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR,
+        .dynamicRendering = true,
+    };
+    const VkPhysicalDeviceFeatures2 DEVICE_FEATURES2 {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR,
+        .pNext = &DYNAMIC_RENDERING_FEATURES,
+        .features = {
+        
+        },
     };
 
     VulkanDevice::VulkanDevice(const Window &window, std::shared_ptr<VulkanInstance> instance)
-        : instance_(instance)
+        : instance_(instance), window_(window)
     {
         surface_ = window.create_vulkan_surface(instance->instance());
         
@@ -36,7 +41,7 @@ namespace saltus::vulkan
         std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
 
         float priority = 1.f;
-        for (uint32_t index : {
+        for (uint32_t index : std::set{
             families.graphicsFamily.value(), families.presentFamily.value(),
         })
         {
@@ -48,15 +53,12 @@ namespace saltus::vulkan
             queue_create_infos.push_back(info);
         }
 
-        VkPhysicalDeviceFeatures device_features{};
-
         VkDeviceCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        create_info.pNext = &DEVICE_FEATURES2;
 
         create_info.queueCreateInfoCount = queue_create_infos.size();
         create_info.pQueueCreateInfos = queue_create_infos.data();
-
-        create_info.pEnabledFeatures = &device_features;
 
         create_info.enabledExtensionCount = DEVICE_EXTENSIONS.size();
         create_info.ppEnabledExtensionNames = DEVICE_EXTENSIONS.data();
@@ -88,6 +90,11 @@ namespace saltus::vulkan
     VulkanDevice::operator VkDevice() const
     {
         return device_;
+    }
+
+    const Window &VulkanDevice::window() const
+    {
+        return window_;
     }
 
     QueueFamilyIndices VulkanDevice::get_physical_device_family_indices() const
@@ -191,9 +198,13 @@ namespace saltus::vulkan
 
     bool VulkanDevice::is_physical_device_suitable(VkPhysicalDevice physical_device)
     {
+        // Check for complete queue families support
+
         QueueFamilyIndices families = get_physical_device_family_indices(physical_device);
         if (!families.is_complete())
             return false;
+
+        // Check for extensions support
 
         uint32_t extensions_count = 0;
         vkEnumerateDeviceExtensionProperties(
@@ -221,6 +232,26 @@ namespace saltus::vulkan
         SwapChainSupportDetails swapchain_support =
             get_physical_device_swap_chain_support_details(physical_device);
         if (swapchain_support.formats.empty() || swapchain_support.present_modes.empty())
+            return false;
+
+        // lol
+
+        VkPhysicalDeviceProperties device_properties{};
+        vkGetPhysicalDeviceProperties(physical_device, &device_properties);
+        std::cout << "Device " << device_properties.deviceName << "\n";
+
+        // Check for dynamic rendering support
+
+        VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering_features = {};
+        dynamic_rendering_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
+
+        VkPhysicalDeviceFeatures2 device_features2 = {};
+        device_features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        device_features2.pNext = &dynamic_rendering_features;
+
+        vkGetPhysicalDeviceFeatures2(physical_device, &device_features2);
+
+        if (!dynamic_rendering_features.dynamicRendering)
             return false;
 
         return true;

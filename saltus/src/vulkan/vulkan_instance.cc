@@ -5,6 +5,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <vulkan/vulkan.h>
+#include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vk_enum_string_helper.h>
 #include <saltus/vulkan/vulkan_shader.hh>
@@ -20,8 +21,9 @@ namespace saltus::vulkan
         "VK_LAYER_KHRONOS_validation",
     };
     const std::vector<const char *> INSTANCE_EXTENSIONS = {
-        "VK_KHR_surface",
+        VK_KHR_SURFACE_EXTENSION_NAME,
         "VK_KHR_xcb_surface",
+        VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
     };
 
     static bool check_layer_is_supported(const char *name)
@@ -51,7 +53,7 @@ namespace saltus::vulkan
         appInfo.applicationVersion = VK_MAKE_VERSION(0, 0, 0);
         appInfo.pEngineName = "saltus";
         appInfo.engineVersion = VK_MAKE_VERSION(0, 0, 0);
-        appInfo.apiVersion = VK_API_VERSION_1_0;
+        appInfo.apiVersion = VK_API_VERSION_1_3;
 
         validation_enabled_ = enable_validation &&
             std::all_of(

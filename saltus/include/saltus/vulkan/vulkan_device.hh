@@ -35,6 +35,8 @@ namespace saltus::vulkan
 
         operator VkDevice() const;
 
+        const Window &window() const;
+
         QueueFamilyIndices get_physical_device_family_indices() const;
         QueueFamilyIndices get_physical_device_family_indices(VkPhysicalDevice device) const;
         SwapChainSupportDetails get_physical_device_swap_chain_support_details() const;
@@ -51,6 +53,8 @@ namespace saltus::vulkan
 
     private:
         std::shared_ptr<VulkanInstance> instance_;
+
+        const Window &window_;
 
         VkSurfaceKHR surface_ = VK_NULL_HANDLE;
         VkPhysicalDevice physical_device_ = VK_NULL_HANDLE;

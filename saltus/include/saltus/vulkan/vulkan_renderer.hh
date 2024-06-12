@@ -3,6 +3,7 @@
 #include "saltus/renderer.hh"
 #include "saltus/vulkan/vulkan_device.hh"
 #include "saltus/vulkan/vulkan_instance.hh"
+#include "saltus/vulkan/vulkan_render_target.hh"
 
 #include <vector>
 #include <vulkan/vulkan_core.h>
@@ -25,15 +26,8 @@ namespace saltus::vulkan
     private:
         std::shared_ptr<VulkanInstance> instance_;
         std::shared_ptr<VulkanDevice> device_;
+        std::shared_ptr<VulkanRenderTarget> render_target_;
 
-        VkFormat swapchain_image_format_;
-        VkExtent2D swapchain_extent_;
-        VkSwapchainKHR swapchain_;
-        std::vector<VkImage> swapchain_images_;
-        std::vector<VkImageView> swapchain_image_views_;
-        std::vector<VkFramebuffer> swapchain_framebuffers_;
-
-        VkRenderPass render_pass_;
         VkPipelineLayout pipeline_layout_;
         VkPipeline graphics_pipeline_;
 
@@ -46,25 +40,9 @@ namespace saltus::vulkan
 
         int current_frame_ = 0;
 
-        VkSurfaceFormatKHR choose_swap_chain_format(
-            const std::vector<VkSurfaceFormatKHR> &availableFormats
-        );
-        VkPresentModeKHR choose_swap_chain_present_mode(
-            const std::vector<VkPresentModeKHR> &availablePresentModes
-        );
-        VkExtent2D choose_swap_extent(
-            const VkSurfaceCapabilitiesKHR &capabilities
-        );
-        void create_swap_chain();
-        void create_image_views();
-        void create_render_pass();
         void create_graphics_pipeline();
-        void create_frame_buffers();
         void create_command_pool_and_buffers();
         void create_sync_objects();
-
-        void clean_swap_chain();
-        void recreate_swap_chain();
 
         void record_command_buffer(
             VkCommandBuffer command_buffer, uint32_t image_index

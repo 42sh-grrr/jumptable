@@ -1,6 +1,5 @@
 #include "saltus/vulkan/vulkan_renderer.hh"
 
-#include <limits>
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
@@ -12,6 +11,7 @@
 #include <saltus/vulkan/vulkan_shader.hh>
 #include "saltus/vulkan/vulkan_material.hh"
 #include "saltus/vulkan/vulkan_mesh.hh"
+#include "saltus/vulkan/vulkan_render_target.hh"
 
 namespace saltus::vulkan
 {
@@ -93,12 +93,9 @@ namespace saltus::vulkan
     {
         instance_ = std::make_shared<VulkanInstance>();
         device_ = std::make_shared<VulkanDevice>(window, instance_);
+        render_target_ = std::make_shared<VulkanRenderTarget>(device_);
         
-        create_swap_chain();
-        create_image_views();
-        create_render_pass();
         create_graphics_pipeline();
-        create_frame_buffers();
         create_command_pool_and_buffers();
         create_sync_objects();
     }
@@ -114,8 +111,6 @@ namespace saltus::vulkan
         vkDestroyCommandPool(device, command_pool_, nullptr);
         vkDestroyPipeline(device, graphics_pipeline_, nullptr);
         vkDestroyPipelineLayout(device, pipeline_layout_, nullptr);
-        vkDestroyRenderPass(device, render_pass_, nullptr);
-        clean_swap_chain();
     }
 
     void VulkanRenderer::render()
@@ -123,21 +118,8 @@ namespace saltus::vulkan
         auto device = device_->device();
 
         vkWaitForFences(device, 1, &in_flight_fences_[current_frame_], VK_TRUE, UINT64_MAX);
-
-        uint32_t image_index;
-        VkResult result = vkAcquireNextImageKHR(
-            device, swapchain_, UINT32_MAX, image_available_semaphores_[current_frame_],
-            nullptr, &image_index
-        );
-        if (result == VK_ERROR_OUT_OF_DATE_KHR)
-        {
-            recreate_swap_chain();
-            render();
-            return;
-        }
-        if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
-            throw std::runtime_error("Could not acquire an image");
-
+        uint32_t image_index =
+            render_target_->acquire_next_image(image_available_semaphores_[current_frame_]);
         vkResetFences(device, 1, &in_flight_fences_[current_frame_]);
 
         record_command_buffer(command_buffers_[current_frame_], image_index);
@@ -162,7 +144,7 @@ namespace saltus::vulkan
         submit_info.signalSemaphoreCount = 1;
         submit_info.pSignalSemaphores = signal_semaphores;
 
-        result = vkQueueSubmit(device_->graphics_queue(), 1, &submit_info, in_flight_fences_[current_frame_]);
+        VkResult result = vkQueueSubmit(device_->graphics_queue(), 1, &submit_info, in_flight_fences_[current_frame_]);
         if (result != VK_SUCCESS)
             throw std::runtime_error("Could not submit queue");
 
@@ -172,7 +154,7 @@ namespace saltus::vulkan
         present_info.waitSemaphoreCount = 1;
         present_info.pWaitSemaphores = signal_semaphores;
 
-        VkSwapchainKHR swapchains[] = { swapchain_ };
+        VkSwapchainKHR swapchains[] = { render_target_->swapchain() };
         present_info.swapchainCount = 1;
         present_info.pSwapchains = swapchains;
         present_info.pImageIndices = &image_index;
@@ -180,12 +162,12 @@ namespace saltus::vulkan
         result = vkQueuePresentKHR(device_->present_queue(), &present_info);
         if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
-            recreate_swap_chain();
+            render_target_->recreate();
             render();
         }
         else if (result == VK_SUBOPTIMAL_KHR)
         {
-            recreate_swap_chain();
+            render_target_->recreate();
         }
         else if (result != VK_SUCCESS)
             throw std::runtime_error("Could not present to queue");
@@ -213,199 +195,6 @@ namespace saltus::vulkan
         return std::make_shared<VulkanMesh>(device_, info);
     }
 
-    VkSurfaceFormatKHR VulkanRenderer::choose_swap_chain_format(
-        const std::vector<VkSurfaceFormatKHR> &availableFormats
-    ) {
-        if (availableFormats.size() == 0)
-            throw std::runtime_error("VulkanRenderer::choose_swap_chain_format was given an empty vector");
-        for (const auto &format : availableFormats)
-        {
-            if (
-                format.format == VK_FORMAT_B8G8R8A8_SRGB &&
-                format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
-            ) {
-                return format;
-            }
-        }
-        return availableFormats[0];
-    }
-
-    VkPresentModeKHR VulkanRenderer::choose_swap_chain_present_mode(
-        const std::vector<VkPresentModeKHR> &availablePresentModes
-    ) {
-        for (const auto& availablePresentMode : availablePresentModes) {
-            if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-                return availablePresentMode;
-            }
-        }
-
-        return VK_PRESENT_MODE_FIFO_KHR;
-    }
-
-    VkExtent2D VulkanRenderer::choose_swap_extent(
-        const VkSurfaceCapabilitiesKHR &capabilities
-    ) {
-        if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
-        {
-            return capabilities.currentExtent;
-        }
-
-        auto window_geometry = window_.request_geometry();
-
-        uint32_t target_width = std::clamp(
-            static_cast<uint32_t>(window_geometry.width),
-            capabilities.minImageExtent.width, capabilities.maxImageExtent.width
-        );
-        uint32_t target_height = std::clamp(
-            static_cast<uint32_t>(window_geometry.height),
-            capabilities.minImageExtent.height, capabilities.maxImageExtent.height
-        );
-
-        return VkExtent2D {
-            .width = target_width,
-            .height = target_height,
-        };
-    }
-
-    void VulkanRenderer::create_swap_chain()
-    {
-        SwapChainSupportDetails swap_chain_support =
-            device_->get_physical_device_swap_chain_support_details();
-
-        VkSurfaceFormatKHR surface_format =
-            choose_swap_chain_format(swap_chain_support.formats);
-        swapchain_image_format_ = surface_format.format;
-        VkPresentModeKHR present_mode =
-            choose_swap_chain_present_mode(swap_chain_support.present_modes);
-        VkExtent2D extent =
-            choose_swap_extent(swap_chain_support.capabilities);
-        swapchain_extent_ = extent;
-
-        uint32_t max_image_count = swap_chain_support.capabilities.maxImageCount;
-        uint32_t image_count = swap_chain_support.capabilities.minImageCount + 1;
-        if (max_image_count != 0 && image_count > max_image_count)
-            image_count = max_image_count;
-
-        VkSwapchainCreateInfoKHR create_info{};
-        create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        create_info.surface = device_->surface();
-        create_info.minImageCount = image_count;
-        create_info.imageFormat = surface_format.format;
-        create_info.imageColorSpace = surface_format.colorSpace;
-        create_info.imageExtent = extent;
-        create_info.imageArrayLayers = 1;
-        create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-        QueueFamilyIndices indices = device_->get_physical_device_family_indices();
-
-        uint32_t queue_family_indices[] = {
-            indices.graphicsFamily.value(),
-            indices.presentFamily.value(),
-        };
-
-        if (indices.graphicsFamily != indices.presentFamily) {
-            create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-            create_info.queueFamilyIndexCount =
-                sizeof(queue_family_indices) / sizeof(*queue_family_indices);
-            create_info.pQueueFamilyIndices = queue_family_indices;
-        } else {
-            create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            create_info.queueFamilyIndexCount = 0; // Optional
-            create_info.pQueueFamilyIndices = nullptr; // Optional
-        }
-
-        create_info.preTransform = swap_chain_support.capabilities.currentTransform;
-        create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-        create_info.presentMode = present_mode;
-        create_info.clipped = VK_TRUE;
-
-        VkResult result =
-            vkCreateSwapchainKHR(device_->device(), &create_info, nullptr, &swapchain_);
-        if (result != VK_SUCCESS)
-            throw std::runtime_error("Could not create swap chain");
-
-        uint32_t real_image_count = 0;
-        vkGetSwapchainImagesKHR(
-            *device_, swapchain_, &real_image_count, nullptr
-        );
-        swapchain_images_.resize(real_image_count);
-        vkGetSwapchainImagesKHR(
-            *device_, swapchain_, &real_image_count, swapchain_images_.data()
-        );
-    }
-
-    void VulkanRenderer::create_image_views()
-    {
-        swapchain_image_views_.clear();
-
-        for (const auto &image : swapchain_images_)
-        {
-            VkImageViewCreateInfo create_info{};
-            create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            create_info.image = image;
-            create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            create_info.format = swapchain_image_format_;
-            create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-            create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-            create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-            create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-            create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            create_info.subresourceRange.baseMipLevel = 0;
-            create_info.subresourceRange.levelCount = 1;
-            create_info.subresourceRange.baseArrayLayer = 0;
-            create_info.subresourceRange.layerCount = 1;
-            VkImageView image_view;
-            VkResult result =
-                vkCreateImageView(*device_, &create_info, nullptr, &image_view);
-            if (result != VK_SUCCESS)
-                throw std::runtime_error("Failed to create an image view");
-            swapchain_image_views_.push_back(image_view);
-        }
-    }
-
-    void VulkanRenderer::create_render_pass()
-    {
-        VkAttachmentDescription color_attachment{};
-        color_attachment.format = swapchain_image_format_;
-        color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-
-        color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-        color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-        VkAttachmentReference color_attachment_ref{};
-        color_attachment_ref.attachment = 0;
-        color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-        VkSubpassDescription subpass{};
-        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpass.colorAttachmentCount = 1;
-        subpass.pColorAttachments = &color_attachment_ref;
-
-        VkSubpassDependency dependency{};
-        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.srcAccessMask = 0;
-        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-        VkRenderPassCreateInfo render_pass_info{};
-        render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        render_pass_info.attachmentCount = 1;
-        render_pass_info.pAttachments = &color_attachment;
-        render_pass_info.subpassCount = 1;
-        render_pass_info.pSubpasses = &subpass;
-        render_pass_info.dependencyCount = 1;
-        render_pass_info.pDependencies = &dependency;
-
-        VkResult result =
-            vkCreateRenderPass(*device_, &render_pass_info, nullptr, &render_pass_);
-        if (result != VK_SUCCESS)
-            throw std::runtime_error("Could not create render pass");
-    }
 
     void VulkanRenderer::create_graphics_pipeline()
     {
@@ -491,8 +280,15 @@ namespace saltus::vulkan
         if (result != VK_SUCCESS)
             throw std::runtime_error("Could not create pipeline layout");
 
-        VkGraphicsPipelineCreateInfo pipeline_info{};
-        pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        VkPipelineRenderingCreateInfoKHR pipeline_create{VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR};
+        pipeline_create.colorAttachmentCount    = 1;
+        pipeline_create.pColorAttachmentFormats = &render_target_->swapchain_image_format();
+        // TODO: Depth buffer
+        // pipeline_create.depthAttachmentFormat   = render_target_->swapchain_image_format();
+        // pipeline_create.stencilAttachmentFormat = render_target_->swapchain_image_format();
+
+        VkGraphicsPipelineCreateInfo pipeline_info{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
+        pipeline_info.pNext = &pipeline_create;
         pipeline_info.stageCount = sizeof(shader_stages) / sizeof(*shader_stages);
         pipeline_info.pStages = shader_stages;
         pipeline_info.pVertexInputState = &vertexInputInfo;
@@ -505,7 +301,7 @@ namespace saltus::vulkan
         pipeline_info.pDynamicState = &dynamic_state;
 
         pipeline_info.layout = pipeline_layout_;
-        pipeline_info.renderPass = render_pass_;
+        pipeline_info.renderPass = nullptr;
         pipeline_info.subpass = 0;
 
         result = vkCreateGraphicsPipelines(
@@ -513,30 +309,6 @@ namespace saltus::vulkan
         );
         if (result != VK_SUCCESS)
             throw std::runtime_error("Could not create graphics pipeline");
-    }
-
-    void VulkanRenderer::create_frame_buffers()
-    {
-        swapchain_framebuffers_.clear();
-
-        for (const auto &view : swapchain_image_views_)
-        {
-            VkFramebufferCreateInfo framebuffer_info{};
-            framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            framebuffer_info.renderPass = render_pass_;
-            framebuffer_info.attachmentCount = 1;
-            framebuffer_info.pAttachments = &view;
-            framebuffer_info.width = swapchain_extent_.width;
-            framebuffer_info.height = swapchain_extent_.height;
-            framebuffer_info.layers = 1;
-
-            VkFramebuffer framebuffer;
-            VkResult result
-                = vkCreateFramebuffer(*device_, &framebuffer_info, nullptr, &framebuffer);
-            if (result != VK_SUCCESS)
-                throw std::runtime_error("Could not create frame buffer");
-            swapchain_framebuffers_.push_back(framebuffer);
-        }
     }
 
     void VulkanRenderer::create_command_pool_and_buffers()
@@ -594,51 +366,73 @@ namespace saltus::vulkan
         }
     }
 
-    void VulkanRenderer::clean_swap_chain()
-    {
-        for (const auto &framebuffer : swapchain_framebuffers_)
-            vkDestroyFramebuffer(*device_, framebuffer, nullptr);
-        for (const auto &view : swapchain_image_views_)
-            vkDestroyImageView(*device_, view, nullptr);
-        vkDestroySwapchainKHR(*device_, swapchain_, nullptr);
-    }
-
-    void VulkanRenderer::recreate_swap_chain()
-    {
-        vkDeviceWaitIdle(*device_);
-
-        clean_swap_chain();
-
-        create_swap_chain();
-        create_image_views();
-        create_frame_buffers();
-    }
-
     void VulkanRenderer::record_command_buffer(
         VkCommandBuffer command_buffer, uint32_t image_index
     ) {
+        auto image_view = render_target_->swapchain_image_views()[image_index];
+        auto image = render_target_->swapchain_images()[image_index];
+
         VkCommandBufferBeginInfo begin_info{};
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         VkResult result = vkBeginCommandBuffer(command_buffer, &begin_info);
         if (result != VK_SUCCESS)
             throw std::runtime_error("Could not begin command buffer");
 
-        VkClearValue clear_color = {{{0.,0.,0.,1.}}};
-        VkRenderPassBeginInfo render_pass_begin_info{};
-        render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        render_pass_begin_info.renderPass = render_pass_;
-        render_pass_begin_info.framebuffer = swapchain_framebuffers_[image_index];
-        render_pass_begin_info.renderArea = {
-            .offset = {0, 0},
-            .extent = swapchain_extent_,
-        };
-        render_pass_begin_info.clearValueCount = 1;
-        render_pass_begin_info.pClearValues = &clear_color;
+        // <> Prepare render image layout for rendering
 
-        vkCmdBeginRenderPass(command_buffer,
-            &render_pass_begin_info,
-            VK_SUBPASS_CONTENTS_INLINE
+        const VkImageMemoryBarrier image_memory_barrier_init {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = image,
+            .subresourceRange = {
+              .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+              .baseMipLevel = 0,
+              .levelCount = 1,
+              .baseArrayLayer = 0,
+              .layerCount = 1,
+            },
+        };
+
+        vkCmdPipelineBarrier(
+            command_buffer,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            0,
+            0, nullptr,
+            0, nullptr,
+            1,
+            &image_memory_barrier_init
         );
+
+        // </> Prepare render image layout for rendering
+
+        VkRenderingInfo rendering_info{};
+        rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+        rendering_info.renderArea = {
+            .offset = { 0, 0 },
+            .extent = render_target_->swapchain_extent(),
+        };
+        rendering_info.layerCount = 1;
+
+        VkRenderingAttachmentInfo color_attachment { };
+        color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        color_attachment.imageView = image_view;
+        color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+        color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        VkClearValue clear_color = {{{0.,0.,0.,1.}}};
+        color_attachment.clearValue = clear_color;
+
+        VkRenderingAttachmentInfo attachments[] = { color_attachment };
+        rendering_info.colorAttachmentCount = 1;
+        rendering_info.pColorAttachments = attachments;
+
+        vkCmdBeginRendering(command_buffer, &rendering_info);
         vkCmdBindPipeline(command_buffer,
             VK_PIPELINE_BIND_POINT_GRAPHICS,
             graphics_pipeline_
@@ -647,22 +441,54 @@ namespace saltus::vulkan
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
-        viewport.width = static_cast<float>(swapchain_extent_.width);
-        viewport.height = static_cast<float>(swapchain_extent_.height);
+        viewport.width = static_cast<float>(render_target_->swapchain_extent().width);
+        viewport.height = static_cast<float>(render_target_->swapchain_extent().height);
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
         vkCmdSetViewport(command_buffer, 0, 1, &viewport);
 
         VkRect2D scissor{};
         scissor.offset = {0, 0};
-        scissor.extent = swapchain_extent_;
+        scissor.extent = render_target_->swapchain_extent();
         vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 
         vkCmdDraw(command_buffer, 3, 1, 0, 0);
 
-        vkCmdEndRenderPass(command_buffers_[current_frame_]);
+        vkCmdEndRendering(command_buffer);
 
-        result = vkEndCommandBuffer(command_buffers_[current_frame_]);
+        // <> Prepare render image layout for presentation
+
+        const VkImageMemoryBarrier image_memory_barrier {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = image,
+            .subresourceRange = {
+              .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+              .baseMipLevel = 0,
+              .levelCount = 1,
+              .baseArrayLayer = 0,
+              .layerCount = 1,
+            }
+        };
+
+        vkCmdPipelineBarrier(
+            command_buffer,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+            0,
+            0, nullptr,
+            0, nullptr,
+            1,
+            &image_memory_barrier
+        );
+
+        // <p> Prepare render image layout for presentation
+
+        result = vkEndCommandBuffer(command_buffer);
         if (result != VK_SUCCESS)
             throw std::runtime_error("Command buffer recording (gone wrong !!)");
     }
