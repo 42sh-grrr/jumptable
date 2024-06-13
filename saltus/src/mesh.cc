@@ -3,6 +3,7 @@
 namespace saltus
 {
     Mesh::Mesh(MeshCreateInfo info):
+        vertex_count_(info.vertex_count),
         vertex_attributes_(info.vertex_attributes),
         flip_faces_(info.flip_faces),
         primitive_topology_(info.primitive_topology)
@@ -10,6 +11,11 @@ namespace saltus
 
     Mesh::~Mesh()
     { }
+
+    uint32_t Mesh::vertex_count() const
+    {
+        return vertex_count_;
+    }
 
     const std::vector<MeshVertexAttribute> &Mesh::vertex_attributes() const
     {

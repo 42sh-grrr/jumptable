@@ -11,12 +11,13 @@ namespace saltus
     struct MeshVertexAttribute
     {
         std::string name;
-        VertexAttributeDataType type;
+        VertexAttributeType type;
         ByteArray data;
     };
 
     struct MeshCreateInfo
     {
+        uint32_t vertex_count;
         std::vector<MeshVertexAttribute> vertex_attributes;
         /// Flips which faces are conridered front face from the material
         bool flip_faces;
@@ -30,6 +31,7 @@ namespace saltus
         Mesh(const Mesh &x) = delete;
         const Mesh &operator =(const Mesh &x) = delete;
 
+        uint32_t vertex_count() const;
         const std::vector<MeshVertexAttribute> &vertex_attributes() const;
         bool flip_faces() const;
         PritmitiveTopology primitive_topology() const;
@@ -38,6 +40,7 @@ namespace saltus
         Mesh(MeshCreateInfo);
 
     private:
+        uint32_t vertex_count_;
         std::vector<MeshVertexAttribute> vertex_attributes_;
         bool flip_faces_;
         PritmitiveTopology primitive_topology_;

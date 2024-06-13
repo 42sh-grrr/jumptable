@@ -9,9 +9,12 @@ namespace saltus
     }
 
     Material::Material(MaterialCreateInfo create_info):
+        vertex_attributes_(create_info.vertex_attributes),
         vertex_shader_(create_info.vertex_shader),
         fragment_shader_(create_info.fragment_shader),
-        vertex_attributes_(create_info.vertex_attributes)
+        front_face_(create_info.front_face),
+        cull_mode_(create_info.cull_mode),
+        primitive_topology_(create_info.primitive_topology)
     {
         if (!create_info.vertex_shader)
             throw std::runtime_error("Vertex shader of material cannot be null");

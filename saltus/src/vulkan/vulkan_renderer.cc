@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <memory>
 #include <stdexcept>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
@@ -12,6 +13,7 @@
 #include "saltus/vulkan/vulkan_material.hh"
 #include "saltus/vulkan/vulkan_mesh.hh"
 #include "saltus/vulkan/vulkan_render_target.hh"
+#include "saltus/vulkan/vulkan_instance_group.hh"
 
 namespace saltus::vulkan
 {
@@ -95,7 +97,6 @@ namespace saltus::vulkan
         device_ = std::make_shared<VulkanDevice>(window, instance_);
         render_target_ = std::make_shared<VulkanRenderTarget>(device_);
         
-        create_graphics_pipeline();
         create_command_pool_and_buffers();
         create_sync_objects();
     }
@@ -109,11 +110,9 @@ namespace saltus::vulkan
             vkDestroyFence(device, in_flight_fences_[i], nullptr);
         }
         vkDestroyCommandPool(device, command_pool_, nullptr);
-        vkDestroyPipeline(device, graphics_pipeline_, nullptr);
-        vkDestroyPipelineLayout(device, pipeline_layout_, nullptr);
     }
 
-    void VulkanRenderer::render()
+    void VulkanRenderer::render(const RenderInfo info)
     {
         auto device = device_->device();
 
@@ -122,7 +121,7 @@ namespace saltus::vulkan
             render_target_->acquire_next_image(image_available_semaphores_[current_frame_]);
         vkResetFences(device, 1, &in_flight_fences_[current_frame_]);
 
-        record_command_buffer(command_buffers_[current_frame_], image_index);
+        record_command_buffer(command_buffers_[current_frame_], image_index, info);
 
         VkSemaphore wait_semaphores[] = {
             image_available_semaphores_[current_frame_]
@@ -163,7 +162,7 @@ namespace saltus::vulkan
         if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
             render_target_->recreate();
-            render();
+            render(info);
         }
         else if (result == VK_SUBOPTIMAL_KHR)
         {
@@ -195,120 +194,9 @@ namespace saltus::vulkan
         return std::make_shared<VulkanMesh>(device_, info);
     }
 
-
-    void VulkanRenderer::create_graphics_pipeline()
+    std::shared_ptr<InstanceGroup> VulkanRenderer::create_instance_group(InstanceGroupCreateInfo info)
     {
-        VulkanShader vert_shader (device_, {
-            .source_code = read_full_file("saltus/shaders/shader.vert.spv"),
-        });
-        VulkanShader frag_shader (device_, {
-            .source_code = read_full_file("saltus/shaders/shader.frag.spv"),
-        });
-
-        VkPipelineShaderStageCreateInfo vert_shader_stage_info{};
-        vert_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vert_shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vert_shader_stage_info.module = vert_shader.module();
-        vert_shader_stage_info.pName = "main";
-
-        VkPipelineShaderStageCreateInfo frag_shader_stage_info{};
-        frag_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        frag_shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        frag_shader_stage_info.module = frag_shader.module();
-        frag_shader_stage_info.pName = "main";
-
-        VkPipelineShaderStageCreateInfo shader_stages[] = {
-            vert_shader_stage_info,
-            frag_shader_stage_info
-        };
-
-        VkDynamicState dynamic_states[] = {
-            VK_DYNAMIC_STATE_VIEWPORT,
-            VK_DYNAMIC_STATE_SCISSOR,
-        };
-
-        VkPipelineDynamicStateCreateInfo dynamic_state{};
-        dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        dynamic_state.dynamicStateCount = sizeof(dynamic_states) / sizeof(*dynamic_states);
-        dynamic_state.pDynamicStates = dynamic_states;
-
-        VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-        vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-
-        VkPipelineInputAssemblyStateCreateInfo input_assembly{};
-        input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-
-        VkPipelineViewportStateCreateInfo viewport_state{};
-        viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        viewport_state.viewportCount = 1;
-        viewport_state.scissorCount = 1;
-
-        VkPipelineRasterizationStateCreateInfo rasterizer{};
-        rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-        rasterizer.depthClampEnable = VK_FALSE;
-        rasterizer.rasterizerDiscardEnable = VK_FALSE;
-        rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-        rasterizer.lineWidth = 1.0f;
-        rasterizer.cullMode = VK_CULL_MODE_NONE;
-        rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
-        rasterizer.depthBiasEnable = VK_FALSE;
-
-        VkPipelineMultisampleStateCreateInfo multisampling{};
-        multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-        multisampling.sampleShadingEnable = VK_FALSE;
-        multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-        VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-        colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT
-                                            | VK_COLOR_COMPONENT_G_BIT
-                                            | VK_COLOR_COMPONENT_B_BIT
-                                            | VK_COLOR_COMPONENT_A_BIT;
-        colorBlendAttachment.blendEnable = VK_FALSE;
-
-        VkPipelineColorBlendStateCreateInfo colorBlending{};
-        colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        colorBlending.logicOpEnable = VK_FALSE;
-        colorBlending.attachmentCount = 1;
-        colorBlending.pAttachments = &colorBlendAttachment;
-
-        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-        pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-
-        VkResult result =
-            vkCreatePipelineLayout(*device_, &pipelineLayoutInfo, nullptr, &pipeline_layout_);
-        if (result != VK_SUCCESS)
-            throw std::runtime_error("Could not create pipeline layout");
-
-        VkPipelineRenderingCreateInfoKHR pipeline_create{VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR};
-        pipeline_create.colorAttachmentCount    = 1;
-        pipeline_create.pColorAttachmentFormats = &render_target_->swapchain_image_format();
-        // TODO: Depth buffer
-        // pipeline_create.depthAttachmentFormat   = render_target_->swapchain_image_format();
-        // pipeline_create.stencilAttachmentFormat = render_target_->swapchain_image_format();
-
-        VkGraphicsPipelineCreateInfo pipeline_info{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
-        pipeline_info.pNext = &pipeline_create;
-        pipeline_info.stageCount = sizeof(shader_stages) / sizeof(*shader_stages);
-        pipeline_info.pStages = shader_stages;
-        pipeline_info.pVertexInputState = &vertexInputInfo;
-        pipeline_info.pInputAssemblyState = &input_assembly;
-        pipeline_info.pViewportState = &viewport_state;
-        pipeline_info.pRasterizationState = &rasterizer;
-        pipeline_info.pMultisampleState = &multisampling;
-        pipeline_info.pDepthStencilState = nullptr;
-        pipeline_info.pColorBlendState = &colorBlending;
-        pipeline_info.pDynamicState = &dynamic_state;
-
-        pipeline_info.layout = pipeline_layout_;
-        pipeline_info.renderPass = nullptr;
-        pipeline_info.subpass = 0;
-
-        result = vkCreateGraphicsPipelines(
-            *device_, nullptr, 1, &pipeline_info, nullptr, &graphics_pipeline_
-        );
-        if (result != VK_SUCCESS)
-            throw std::runtime_error("Could not create graphics pipeline");
+        return std::make_shared<VulkanInstanceGroup>(render_target_, info);
     }
 
     void VulkanRenderer::create_command_pool_and_buffers()
@@ -367,7 +255,8 @@ namespace saltus::vulkan
     }
 
     void VulkanRenderer::record_command_buffer(
-        VkCommandBuffer command_buffer, uint32_t image_index
+        VkCommandBuffer command_buffer, uint32_t image_index,
+        const RenderInfo &info
     ) {
         auto image_view = render_target_->swapchain_image_views()[image_index];
         auto image = render_target_->swapchain_images()[image_index];
@@ -433,27 +322,13 @@ namespace saltus::vulkan
         rendering_info.pColorAttachments = attachments;
 
         vkCmdBeginRendering(command_buffer, &rendering_info);
-        vkCmdBindPipeline(command_buffer,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            graphics_pipeline_
-        );
-
-        VkViewport viewport{};
-        viewport.x = 0.0f;
-        viewport.y = 0.0f;
-        viewport.width = static_cast<float>(render_target_->swapchain_extent().width);
-        viewport.height = static_cast<float>(render_target_->swapchain_extent().height);
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-        vkCmdSetViewport(command_buffer, 0, 1, &viewport);
-
-        VkRect2D scissor{};
-        scissor.offset = {0, 0};
-        scissor.extent = render_target_->swapchain_extent();
-        vkCmdSetScissor(command_buffer, 0, 1, &scissor);
-
-        vkCmdDraw(command_buffer, 3, 1, 0, 0);
-
+        for (const auto &instance_group : info.instance_groups)
+        {
+            if (const auto &vk_instance_group = std::dynamic_pointer_cast<VulkanInstanceGroup>(instance_group))
+            {
+                vk_instance_group->render(command_buffer);
+            }
+        }
         vkCmdEndRendering(command_buffer);
 
         // <> Prepare render image layout for presentation

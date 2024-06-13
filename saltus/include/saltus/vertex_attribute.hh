@@ -4,6 +4,7 @@
 
 namespace saltus
 {
+    /// Use google to know what they mean x)
     enum class PritmitiveTopology: uint8_t
     {
         TriangleList,
@@ -12,7 +13,7 @@ namespace saltus
         LineStrip,
     };
 
-    enum class VertexAttributeScalarType: uint8_t
+    enum class VertexAttributeDataType: uint8_t
     {
         u8,
         i8,
@@ -34,9 +35,16 @@ namespace saltus
         Vec4,
     };
 
-    struct VertexAttributeDataType
+    struct VertexAttributeType
     {
-        VertexAttributeScalarType scalar_type;
+        VertexAttributeDataType scalar_type;
         VertexAttributeFormat format;
+
+        static VertexAttributeType Vec2f;
+        static VertexAttributeType Vec3f;
+        static VertexAttributeType Vec4f;
+
+        bool operator ==(const VertexAttributeType &) const;
+        bool operator !=(const VertexAttributeType &) const;
     };
 }

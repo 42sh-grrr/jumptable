@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include "saltus/instance_group.hh"
 #include "saltus/material.hh"
 #include "saltus/mesh.hh"
 #include "saltus/window.hh"
@@ -9,6 +10,11 @@
 
 namespace saltus
 {
+    struct RenderInfo
+    {
+        const std::vector<std::shared_ptr<InstanceGroup>> &instance_groups;
+    };
+
     class Renderer
     {
     public:
@@ -18,12 +24,13 @@ namespace saltus
 
         Window &window();
 
-        virtual void render() = 0;
+        virtual void render(RenderInfo info) = 0;
         virtual void wait_for_idle() = 0;
 
         virtual std::shared_ptr<Shader> create_shader(ShaderCreateInfo) = 0;
         virtual std::shared_ptr<Material> create_material(MaterialCreateInfo) = 0;
         virtual std::shared_ptr<Mesh> create_mesh(MeshCreateInfo) = 0;
+        virtual std::shared_ptr<InstanceGroup> create_instance_group(InstanceGroupCreateInfo) = 0;
 
     protected:
         Renderer(Window &window);

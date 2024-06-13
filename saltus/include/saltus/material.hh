@@ -30,7 +30,7 @@ namespace saltus
     {
         uint32_t location;
         std::string name;
-        VertexAttributeDataType data_type;
+        VertexAttributeType type;
     };
 
     struct MaterialCreateInfo
