@@ -29,10 +29,13 @@ static std::vector<char> read_full_file(const std::string& filename)
 
 int main()
 {
+    std::cout << "Creating window...\n";
     auto window = saltus::WindowBuilder()
         .title("bite")
         .build();
+    std::cout << "Creating renderer...\n";
     auto renderer = saltus::Renderer::create(window);
+    std::cout << "Creating rendering data...\n";
 
     saltus::MeshCreateInfo mesh_info{};
     mesh_info.primitive_topology = saltus::PritmitiveTopology::TriangleList;
@@ -94,6 +97,7 @@ int main()
         .instance_groups = instance_groups,
     };
 
+    std::cout << "Starting event loop!\n";
     for (;;)
     {
         auto event = window.wait_event();
