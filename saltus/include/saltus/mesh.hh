@@ -22,6 +22,8 @@ namespace saltus
         /// Flips which faces are conridered front face from the material
         bool flip_faces;
         PritmitiveTopology primitive_topology;
+
+        MeshCreateInfo();
     };
 
     class Mesh

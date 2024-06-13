@@ -2,6 +2,9 @@
 
 namespace saltus
 {
+    MeshCreateInfo::MeshCreateInfo()
+    { }
+
     Mesh::Mesh(MeshCreateInfo info):
         vertex_count_(info.vertex_count),
         vertex_attributes_(info.vertex_attributes),
