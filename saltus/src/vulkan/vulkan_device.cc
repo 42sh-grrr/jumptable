@@ -43,6 +43,7 @@ namespace saltus::vulkan
         float priority = 1.f;
         for (uint32_t index : std::set{
             families.graphicsFamily.value(), families.presentFamily.value(),
+            families.transferFamily.value()
         })
         {
             VkDeviceQueueCreateInfo info{};
@@ -79,6 +80,7 @@ namespace saltus::vulkan
 
         vkGetDeviceQueue(device_, families.graphicsFamily.value(), 0, &graphics_queue_);
         vkGetDeviceQueue(device_, families.presentFamily.value(), 0, &present_queue_);
+        vkGetDeviceQueue(device_, families.transferFamily.value(), 0, &transfer_queue_);
     }
 
     VulkanDevice::~VulkanDevice()
@@ -118,6 +120,8 @@ namespace saltus::vulkan
         {
             if (family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
                 indices.graphicsFamily = index;
+            if ((family.queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0 && (family.queueFlags & VK_QUEUE_TRANSFER_BIT))
+                indices.transferFamily = index;
 
             VkBool32 supported = false;
             vkGetPhysicalDeviceSurfaceSupportKHR(device, index, surface_, &supported);
@@ -126,6 +130,9 @@ namespace saltus::vulkan
 
             index++;
         }
+        // graphics family is a valid transfer family
+        if (!indices.transferFamily.has_value())
+            indices.transferFamily = indices.graphicsFamily;
 
         return indices;
     }

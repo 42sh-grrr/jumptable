@@ -14,7 +14,13 @@ namespace saltus::vulkan
         create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         create_info.size = size;
         create_info.usage = usage;
-        create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        create_info.sharingMode = VK_SHARING_MODE_CONCURRENT;
+        uint32_t families[] = {
+            device->get_physical_device_family_indices().graphicsFamily.value(),
+            device->get_physical_device_family_indices().transferFamily.value(),
+        };
+        create_info.queueFamilyIndexCount = 2;
+        create_info.pQueueFamilyIndices = families;
 
         VkResult result =
             vkCreateBuffer(*device, &create_info, nullptr, &buffer_);

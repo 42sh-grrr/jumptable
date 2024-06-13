@@ -7,6 +7,135 @@
 
 namespace saltus::vulkan
 {
+    static VkFormat attribute_type_to_vulkan_format(VertexAttributeType type)
+    {
+        switch (type.scalar_type)
+        {
+        case VertexAttributeDataType::u8:
+            switch (type.format)
+            {
+            case VertexAttributeFormat::Scalar:
+                return VK_FORMAT_R8_UINT;
+            case VertexAttributeFormat::Vec2:
+                return VK_FORMAT_R8G8_UINT;
+            case VertexAttributeFormat::Vec3:
+                return VK_FORMAT_R8G8B8_UINT;
+            case VertexAttributeFormat::Vec4:
+                return VK_FORMAT_R8G8B8A8_UINT;
+            }
+        case VertexAttributeDataType::i8:
+            switch (type.format)
+            {
+            case VertexAttributeFormat::Scalar:
+                return VK_FORMAT_R8_SINT;
+            case VertexAttributeFormat::Vec2:
+                return VK_FORMAT_R8G8_SINT;
+            case VertexAttributeFormat::Vec3:
+                return VK_FORMAT_R8G8B8_SINT;
+            case VertexAttributeFormat::Vec4:
+                return VK_FORMAT_R8G8B8A8_SINT;
+            }
+        case VertexAttributeDataType::u16:
+            switch (type.format)
+            {
+            case VertexAttributeFormat::Scalar:
+                return VK_FORMAT_R16_UINT;
+            case VertexAttributeFormat::Vec2:
+                return VK_FORMAT_R16G16_UINT;
+            case VertexAttributeFormat::Vec3:
+                return VK_FORMAT_R16G16B16_UINT;
+            case VertexAttributeFormat::Vec4:
+                return VK_FORMAT_R16G16B16A16_UINT;
+            }
+        case VertexAttributeDataType::i16:
+            switch (type.format)
+            {
+            case VertexAttributeFormat::Scalar:
+                return VK_FORMAT_R16_SINT;
+            case VertexAttributeFormat::Vec2:
+                return VK_FORMAT_R16G16_SINT;
+            case VertexAttributeFormat::Vec3:
+                return VK_FORMAT_R16G16B16_SINT;
+            case VertexAttributeFormat::Vec4:
+                return VK_FORMAT_R16G16B16A16_SINT;
+            }
+        case VertexAttributeDataType::u32:
+            switch (type.format)
+            {
+            case VertexAttributeFormat::Scalar:
+                return VK_FORMAT_R32_UINT;
+            case VertexAttributeFormat::Vec2:
+                return VK_FORMAT_R32G32_UINT;
+            case VertexAttributeFormat::Vec3:
+                return VK_FORMAT_R32G32B32_UINT;
+            case VertexAttributeFormat::Vec4:
+                return VK_FORMAT_R32G32B32A32_UINT;
+            }
+        case VertexAttributeDataType::i32:
+            switch (type.format)
+            {
+            case VertexAttributeFormat::Scalar:
+                return VK_FORMAT_R32_SINT;
+            case VertexAttributeFormat::Vec2:
+                return VK_FORMAT_R32G32_SINT;
+            case VertexAttributeFormat::Vec3:
+                return VK_FORMAT_R32G32B32_SINT;
+            case VertexAttributeFormat::Vec4:
+                return VK_FORMAT_R32G32B32A32_SINT;
+            }
+        case VertexAttributeDataType::f32:
+            switch (type.format)
+            {
+            case VertexAttributeFormat::Scalar:
+                return VK_FORMAT_R32_SFLOAT;
+            case VertexAttributeFormat::Vec2:
+                return VK_FORMAT_R32G32_SFLOAT;
+            case VertexAttributeFormat::Vec3:
+                return VK_FORMAT_R32G32B32_SFLOAT;
+            case VertexAttributeFormat::Vec4:
+                return VK_FORMAT_R32G32B32A32_SFLOAT;
+            }
+        case VertexAttributeDataType::u64:
+            switch (type.format)
+            {
+            case VertexAttributeFormat::Scalar:
+                return VK_FORMAT_R64_UINT;
+            case VertexAttributeFormat::Vec2:
+                return VK_FORMAT_R64G64_UINT;
+            case VertexAttributeFormat::Vec3:
+                return VK_FORMAT_R64G64B64_UINT;
+            case VertexAttributeFormat::Vec4:
+                return VK_FORMAT_R64G64B64A64_UINT;
+            }
+        case VertexAttributeDataType::i64:
+            switch (type.format)
+            {
+            case VertexAttributeFormat::Scalar:
+                return VK_FORMAT_R64_SINT;
+            case VertexAttributeFormat::Vec2:
+                return VK_FORMAT_R64G64_SINT;
+            case VertexAttributeFormat::Vec3:
+                return VK_FORMAT_R64G64B64_SINT;
+            case VertexAttributeFormat::Vec4:
+                return VK_FORMAT_R64G64B64A64_SINT;
+            }
+        case VertexAttributeDataType::f64:
+            switch (type.format)
+            {
+            case VertexAttributeFormat::Scalar:
+                return VK_FORMAT_R64_SFLOAT;
+            case VertexAttributeFormat::Vec2:
+                return VK_FORMAT_R64G64_SFLOAT;
+            case VertexAttributeFormat::Vec3:
+                return VK_FORMAT_R64G64B64_SFLOAT;
+            case VertexAttributeFormat::Vec4:
+                return VK_FORMAT_R64G64B64A64_SFLOAT;
+            }
+        }
+
+        throw std::runtime_error("Invalid format");
+    };
+
     VulkanInstanceGroup::VulkanInstanceGroup(
         std::shared_ptr<VulkanRenderTarget> render_target,
         InstanceGroupCreateInfo create_info
@@ -57,6 +186,12 @@ namespace saltus::vulkan
             pipeline_
         );
 
+        vkCmdBindVertexBuffers(
+            command_buffer, 0,
+            vertex_buffers_.size(),
+            vertex_buffers_.data(), vertex_offsets_.data()
+        );
+
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
@@ -98,6 +233,43 @@ namespace saltus::vulkan
 
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
         vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        std::vector<VkVertexInputBindingDescription> bindings{};
+        std::vector<VkVertexInputAttributeDescription> attrs{};
+
+        vertex_buffers_.clear();
+        vertex_offsets_.clear();
+        for (size_t mesh_attr_i = 0; mesh_attr_i < mesh_->vertex_attributes().size(); mesh_attr_i++)
+        {
+            const MaterialVertexAttribute *material_attr = nullptr;
+            for (const auto &attr : material_->vertex_attributes())
+            {
+                if (attr.name == mesh_->vertex_attributes()[mesh_attr_i].name)
+                    material_attr = &attr;
+            }
+            if (!material_attr)
+                continue;
+            uint32_t binding_i = vertex_buffers_.size();
+
+            VkVertexInputBindingDescription binding{};
+            binding.binding = binding_i;
+            binding.inputRate = VkVertexInputRate::VK_VERTEX_INPUT_RATE_VERTEX;
+            binding.stride = material_attr->type.size();
+            bindings.push_back(binding);
+
+            VkVertexInputAttributeDescription attr{};
+            attr.binding = binding_i;
+            attr.location = material_attr->location;
+            attr.offset = 0;
+            attr.format = attribute_type_to_vulkan_format(material_attr->type);
+            attrs.push_back(attr);
+
+            vertex_buffers_.push_back(mesh_->vertex_buffers()[mesh_attr_i]->buffer());
+            vertex_offsets_.push_back(0);
+        }
+        vertexInputInfo.vertexBindingDescriptionCount = bindings.size();
+        vertexInputInfo.pVertexBindingDescriptions = bindings.data();
+        vertexInputInfo.vertexAttributeDescriptionCount = attrs.size();
+        vertexInputInfo.pVertexAttributeDescriptions = attrs.data();
 
         VkPipelineInputAssemblyStateCreateInfo input_assembly{};
         input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;

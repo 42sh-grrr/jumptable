@@ -44,6 +44,8 @@ namespace saltus
         static VertexAttributeType Vec3f;
         static VertexAttributeType Vec4f;
 
+        uint32_t size() const;
+
         bool operator ==(const VertexAttributeType &) const;
         bool operator !=(const VertexAttributeType &) const;
     };

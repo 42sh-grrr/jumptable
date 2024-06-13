@@ -88,7 +88,7 @@ namespace saltus::vulkan
 
     bool QueueFamilyIndices::is_complete()
     {
-        return graphicsFamily.has_value() && presentFamily.has_value();
+        return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value();
     }
 
     VulkanRenderer::VulkanRenderer(Window &window): Renderer(window)

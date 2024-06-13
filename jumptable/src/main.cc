@@ -1,5 +1,4 @@
 #include <iostream>
-#include <array>
 #include <fstream>
 #include <matrix/matrix.hh>
 #include <saltus/window.hh>
@@ -7,6 +6,7 @@
 #include <saltus/renderer.hh>
 #include <saltus/material.hh>
 #include <unistd.h>
+#include "saltus/byte_array.hh"
 #include "saltus/mesh.hh"
 #include "saltus/vertex_attribute.hh"
 
@@ -42,7 +42,7 @@ int main()
         .data = saltus::to_bytearray(std::vector<float>{
              0.0f,-0.5f,
              0.5f, 0.5f,
-            -0.5f, 0.0f
+            -0.5f, 0.5f
         }),
     });
     mesh_info.vertex_attributes.push_back({

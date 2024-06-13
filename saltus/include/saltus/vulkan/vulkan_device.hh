@@ -20,6 +20,7 @@ namespace saltus::vulkan
     {
         std::optional<uint32_t> graphicsFamily;
         std::optional<uint32_t> presentFamily;
+        std::optional<uint32_t> transferFamily;
 
         bool is_complete();
     };
@@ -50,6 +51,7 @@ namespace saltus::vulkan
 
         VkQueue graphics_queue();
         VkQueue present_queue();
+        VkQueue transfer_queue();
 
     private:
         std::shared_ptr<VulkanInstance> instance_;
@@ -62,6 +64,7 @@ namespace saltus::vulkan
 
         VkQueue graphics_queue_ = VK_NULL_HANDLE;
         VkQueue present_queue_ = VK_NULL_HANDLE;
+        VkQueue transfer_queue_ = VK_NULL_HANDLE;
 
         bool is_physical_device_suitable(VkPhysicalDevice physical_device);
         void choose_physical_device();

@@ -36,6 +36,13 @@ namespace saltus::vulkan
         VkPipelineLayout pipeline_layout_;
         VkPipeline pipeline_;
 
+        /// Setup while creating the pipeline
+        /// The buffers are owned by meshes, this is just used for
+        /// quick binding of all vertex buffers during render
+        std::vector<VkBuffer> vertex_buffers_;
+        /// see vertex_buffers_
+        std::vector<VkDeviceSize> vertex_offsets_;
+
         void create_graphics_pipeline();
         void destroy_graphics_pipeline();
     };
