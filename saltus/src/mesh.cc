@@ -1,4 +1,5 @@
 #include "saltus/mesh.hh"
+#include <stdexcept>
 
 namespace saltus
 {
@@ -10,7 +11,13 @@ namespace saltus
         vertex_attributes_(info.vertex_attributes),
         flip_faces_(info.flip_faces),
         primitive_topology_(info.primitive_topology)
-    { }
+    {
+        for (const auto &attr : info.vertex_attributes)
+        {
+            if (!attr.buffer->usages().vertex)
+                throw std::runtime_error("Meshes vertex buffers must have the vertex usage");
+        }
+    }
 
     Mesh::~Mesh()
     { }

@@ -17,22 +17,6 @@
 
 namespace saltus::vulkan
 {
-    #ifdef NDEBUG
-    constexpr const bool ENABLE_VULKAN_VALIDATION = false;
-    #else // NDEBUG
-    constexpr const bool ENABLE_VULKAN_VALIDATION = true;
-    #endif // NDEBUG
-    const std::vector<const char *> VALIDATION_LAYERS = {
-        "VK_LAYER_KHRONOS_validation",
-    };
-    const std::vector<const char *> INSTANCE_EXTENSIONS = {
-        "VK_KHR_surface",
-        "VK_KHR_xcb_surface",
-    };
-    const std::vector<const char *> DEVICE_EXTENSIONS = {
-        "VK_KHR_swapchain"
-    };
-
     const int MAX_FRAMES_IN_FLIGHT = 2;
 
     #pragma GCC diagnostic push
@@ -177,6 +161,11 @@ namespace saltus::vulkan
     void VulkanRenderer::wait_for_idle()
     {
         vkDeviceWaitIdle(device_->device());
+    }
+
+    std::shared_ptr<Buffer> VulkanRenderer::create_buffer(BufferCreateInfo info)
+    {
+        return std::make_shared<VulkanBuffer>(device_, info);
     }
 
     std::shared_ptr<Shader> VulkanRenderer::create_shader(ShaderCreateInfo info)

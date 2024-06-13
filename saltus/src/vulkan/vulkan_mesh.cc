@@ -1,5 +1,6 @@
 #include "saltus/vulkan/vulkan_mesh.hh"
-#include <cstring>
+#include <memory>
+#include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
 namespace saltus::vulkan
@@ -11,16 +12,11 @@ namespace saltus::vulkan
     {
         for (const auto &attr : info.vertex_attributes)
         {
-            std::unique_ptr<VulkanBuffer> buffer = std::make_unique<VulkanBuffer>(
-                device, attr.data.size(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
-            );
-            buffer->alloc(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-            void *data = buffer->map();
-            memcpy(data, attr.data.data(), attr.data.size());
-            buffer->unmap();
-
-            vertex_buffers_.push_back(std::move(buffer));
+            const auto &vertex_buff =
+                std::dynamic_pointer_cast<VulkanBuffer>(attr.buffer);
+            if (!vertex_buff)
+                throw std::runtime_error("A vulkan mesh can only work with a vulkan buffer");
+            vertex_buffers_.push_back(vertex_buff);
         }
     }
 
@@ -32,7 +28,7 @@ namespace saltus::vulkan
         return device_;
     }
 
-    const std::vector<std::unique_ptr<VulkanBuffer>> &VulkanMesh::vertex_buffers() const
+    const std::vector<std::shared_ptr<VulkanBuffer>> &VulkanMesh::vertex_buffers() const
     {
         return vertex_buffers_;
     }

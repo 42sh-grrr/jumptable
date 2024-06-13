@@ -1,5 +1,6 @@
 #include "saltus/vulkan/vulkan_buffer.hh"
 
+#include <cstring>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
@@ -7,13 +8,12 @@ namespace saltus::vulkan
 {
     VulkanBuffer::VulkanBuffer(
         std::shared_ptr<VulkanDevice> device,
-            size_t size, VkBufferUsageFlags usage
-    ): device_(device), size_(size)
+        BufferCreateInfo info
+    ): Buffer(info), device_(device)
     {
         VkBufferCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        create_info.size = size;
-        create_info.usage = usage;
+        create_info.size = info.size;
         create_info.sharingMode = VK_SHARING_MODE_CONCURRENT;
         uint32_t families[] = {
             device->get_physical_device_family_indices().graphicsFamily.value(),
@@ -22,10 +22,25 @@ namespace saltus::vulkan
         create_info.queueFamilyIndexCount = 2;
         create_info.pQueueFamilyIndices = families;
 
+        if (info.usages.uniform)
+            create_info.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        if (info.usages.index)
+            create_info.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+        if (info.usages.vertex)
+            create_info.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+        if (create_info.usage == 0)
+            throw std::runtime_error("Cannot create a vulkan buffer with 0 usages");
+
         VkResult result =
             vkCreateBuffer(*device, &create_info, nullptr, &buffer_);
         if (result != VK_SUCCESS)
             throw std::runtime_error("Could not create buffer");
+
+        alloc(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+        if (info.data)
+            assign(info.data);
     }
 
     VulkanBuffer::~VulkanBuffer()
@@ -45,14 +60,11 @@ namespace saltus::vulkan
         return buffer_;
     }
 
-    VkDeviceMemory VulkanBuffer::memory() const
+    void VulkanBuffer::assign(const uint8_t *data)
     {
-        return memory_;
-    }
-
-    bool VulkanBuffer::is_allocated() const
-    {
-        return memory_ != VK_NULL_HANDLE;
+        void *bdata = map();
+        memcpy(bdata, data, size());
+        unmap();
     }
 
     void VulkanBuffer::alloc(VkMemoryPropertyFlags memory_properties)

@@ -15,11 +15,11 @@ namespace saltus::vulkan
 
         const std::shared_ptr<VulkanDevice> &device() const;
 
-        const std::vector<std::unique_ptr<VulkanBuffer>> &vertex_buffers() const;
+        const std::vector<std::shared_ptr<VulkanBuffer>> &vertex_buffers() const;
 
     private:
         std::shared_ptr<VulkanDevice> device_;
 
-        std::vector<std::unique_ptr<VulkanBuffer>> vertex_buffers_;
+        std::vector<std::shared_ptr<VulkanBuffer>> vertex_buffers_;
     };
 } // namespace saltus::vulkan

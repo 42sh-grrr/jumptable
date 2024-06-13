@@ -1,9 +1,10 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
-#include "saltus/byte_array.hh"
+#include "saltus/buffer.hh"
 #include "saltus/vertex_attribute.hh"
 
 namespace saltus
@@ -12,7 +13,8 @@ namespace saltus
     {
         std::string name;
         VertexAttributeType type;
-        ByteArray data;
+        /// Must have the Vertex usage
+        std::shared_ptr<Buffer> buffer;
     };
 
     struct MeshCreateInfo

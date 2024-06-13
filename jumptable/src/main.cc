@@ -6,6 +6,7 @@
 #include <saltus/renderer.hh>
 #include <saltus/material.hh>
 #include <unistd.h>
+#include "saltus/buffer.hh"
 #include "saltus/byte_array.hh"
 #include "saltus/mesh.hh"
 #include "saltus/vertex_attribute.hh"
@@ -39,20 +40,26 @@ int main()
     mesh_info.vertex_attributes.push_back({
         .name = "position",
         .type = saltus::VertexAttributeType::Vec2f,
-        .data = saltus::to_bytearray(std::vector<float>{
-             0.0f,-0.5f,
-             0.5f, 0.5f,
-            -0.5f, 0.5f
-        }),
+        .buffer = renderer->create_buffer(saltus::buffer_from_byte_array(
+            saltus::BufferUsages{}.with_vertex(),
+            saltus::to_bytearray(std::vector<float>{
+                 0.0f,-0.5f,
+                 0.5f, 0.5f,
+                -0.5f, 0.5f
+            })
+        )),
     });
     mesh_info.vertex_attributes.push_back({
         .name = "color",
         .type = saltus::VertexAttributeType::Vec3f,
-        .data = saltus::to_bytearray(std::vector<float>{
-            1.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f,
-            0.0f, 0.0f, 1.0f
-        }),
+        .buffer = renderer->create_buffer(saltus::buffer_from_byte_array(
+            saltus::BufferUsages{}.with_vertex(),
+            saltus::to_bytearray(std::vector<float>{
+                1.0f, 0.0f, 0.0f,
+                0.0f, 1.0f, 0.0f,
+                0.0f, 0.0f, 1.0f
+            })
+        )),
     });
     auto mesh = renderer->create_mesh(mesh_info);
 

@@ -19,6 +19,7 @@ namespace saltus::vulkan
         void render(RenderInfo info) override;
         void wait_for_idle() override;
 
+        std::shared_ptr<Buffer> create_buffer(BufferCreateInfo) override;
         std::shared_ptr<Shader> create_shader(ShaderCreateInfo info) override;
         std::shared_ptr<Material> create_material(MaterialCreateInfo) override;
         std::shared_ptr<Mesh> create_mesh(MeshCreateInfo) override;

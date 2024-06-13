@@ -7,6 +7,7 @@
 #include "saltus/mesh.hh"
 #include "saltus/window.hh"
 #include "saltus/shader.hh"
+#include "saltus/buffer.hh"
 
 namespace saltus
 {
@@ -27,6 +28,7 @@ namespace saltus
         virtual void render(RenderInfo info) = 0;
         virtual void wait_for_idle() = 0;
 
+        virtual std::shared_ptr<Buffer> create_buffer(BufferCreateInfo) = 0;
         virtual std::shared_ptr<Shader> create_shader(ShaderCreateInfo) = 0;
         virtual std::shared_ptr<Material> create_material(MaterialCreateInfo) = 0;
         virtual std::shared_ptr<Mesh> create_mesh(MeshCreateInfo) = 0;

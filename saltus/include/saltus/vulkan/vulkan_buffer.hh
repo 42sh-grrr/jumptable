@@ -1,39 +1,35 @@
 #pragma once
 
 #include <vulkan/vulkan_core.h>
+#include "saltus/buffer.hh"
 #include "saltus/vulkan/vulkan_device.hh"
 
 namespace saltus::vulkan
 {
-    class VulkanBuffer
+    class VulkanBuffer: public Buffer
     {
     public:
         VulkanBuffer(
             std::shared_ptr<VulkanDevice> device,
-            size_t size, VkBufferUsageFlags usage
+            BufferCreateInfo info
         );
         ~VulkanBuffer();
-
-        VulkanBuffer(const VulkanBuffer &) = delete;
-        VulkanBuffer &operator =(const VulkanBuffer &) = delete;
 
         operator VkBuffer() const;
 
         VkBuffer buffer() const;
-        VkDeviceMemory memory() const;
 
-        bool is_allocated() const;
-        void alloc(VkMemoryPropertyFlags memory_properties);
-
-        void *map();
-        void unmap();
+        void assign(const uint8_t *data);
 
     private:
         std::shared_ptr<VulkanDevice> device_;
 
-        size_t size_;
         VkBuffer buffer_ = VK_NULL_HANDLE;
         VkDeviceMemory memory_ = VK_NULL_HANDLE;
+
+        void alloc(VkMemoryPropertyFlags memory_properties);
+        void *map();
+        void unmap();
 
         uint32_t find_mem_type(uint32_t type_filter_, VkMemoryPropertyFlags properties);
     };
