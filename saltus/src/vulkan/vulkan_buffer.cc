@@ -14,13 +14,21 @@ namespace saltus::vulkan
         VkBufferCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         create_info.size = info.size;
-        create_info.sharingMode = VK_SHARING_MODE_CONCURRENT;
         uint32_t families[] = {
             device->get_physical_device_family_indices().graphicsFamily.value(),
             device->get_physical_device_family_indices().transferFamily.value(),
         };
-        create_info.queueFamilyIndexCount = 2;
-        create_info.pQueueFamilyIndices = families;
+        if (families[0] == families[1])
+        {
+            create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            create_info.queueFamilyIndexCount = 1;
+            create_info.pQueueFamilyIndices = families;
+        }
+        else {
+            create_info.sharingMode = VK_SHARING_MODE_CONCURRENT;
+            create_info.queueFamilyIndexCount = 2;
+            create_info.pQueueFamilyIndices = families;
+        }
 
         if (info.usages.uniform)
             create_info.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
