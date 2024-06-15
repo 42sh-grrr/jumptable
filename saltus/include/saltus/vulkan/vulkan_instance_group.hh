@@ -33,6 +33,7 @@ namespace saltus::vulkan
         std::shared_ptr<VulkanMaterial> material_;
         std::shared_ptr<VulkanMesh> mesh_;
 
+        VkDescriptorSetLayout descriptor_set_layout_;
         VkPipelineLayout pipeline_layout_;
         VkPipeline pipeline_;
 
@@ -43,7 +44,11 @@ namespace saltus::vulkan
         /// see vertex_buffers_
         std::vector<VkDeviceSize> vertex_offsets_;
 
-        void create_graphics_pipeline();
-        void destroy_graphics_pipeline();
+        void create_descriptor_set_layout();
+        void create_pipeline_layout();
+        void create_pipeline();
+        void destroy_descriptor_set_layout();
+        void destroy_pipeline_layout();
+        void destroy_pipeline();
     };
 } // namespace saltus::vulkan

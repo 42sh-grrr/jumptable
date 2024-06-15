@@ -86,6 +86,11 @@ int main()
         .name = "color",
         .type = saltus::VertexAttributeType::Vec3f,
     });
+    material_info.bindings.push_back({
+        .type = saltus::MaterialBindingType::UniformBuffer,
+        .count = 1,
+        .binding_id = 0,
+    });
     auto material = renderer->create_material(material_info);
 
     std::vector<std::shared_ptr<saltus::InstanceGroup>> instance_groups;

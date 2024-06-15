@@ -10,6 +10,7 @@ namespace saltus
 
     Material::Material(MaterialCreateInfo create_info):
         vertex_attributes_(create_info.vertex_attributes),
+        bindings_(create_info.bindings),
         vertex_shader_(create_info.vertex_shader),
         fragment_shader_(create_info.fragment_shader),
         front_face_(create_info.front_face),
@@ -28,6 +29,11 @@ namespace saltus
     const std::vector<MaterialVertexAttribute> &Material::vertex_attributes() const
     {
         return vertex_attributes_;
+    }
+
+    const std::vector<MaterialBindingInfo> &Material::bindings() const
+    {
+        return bindings_;
     }
 
     const std::shared_ptr<Shader> &Material::vertex_shader() const

@@ -147,11 +147,15 @@ namespace saltus::vulkan
         if (!mesh_)
             throw std::runtime_error("Can only create vulkan instance group with a vulkan mesh");
 
-        create_graphics_pipeline();
+        create_descriptor_set_layout();
+        create_pipeline_layout();
+        create_pipeline();
     }
     VulkanInstanceGroup::~VulkanInstanceGroup()
     {
-        destroy_graphics_pipeline();
+        destroy_pipeline();
+        destroy_pipeline_layout();
+        destroy_descriptor_set_layout();
     }
 
     const std::shared_ptr<VulkanRenderTarget> &VulkanInstanceGroup::render_target() const
@@ -209,7 +213,60 @@ namespace saltus::vulkan
         vkCmdDraw(command_buffer, mesh_->vertex_count(), 1, 0, 0);
     }
 
-    void VulkanInstanceGroup::create_graphics_pipeline()
+    void VulkanInstanceGroup::create_descriptor_set_layout()
+    {
+        const auto device = render_target_->device();
+
+        std::vector<VkDescriptorSetLayoutBinding> bindings{};
+        bindings.reserve(material_->bindings().size());
+
+        for (const auto &binding : material_->bindings())
+        {
+            VkDescriptorSetLayoutBinding vk_binding{};
+            vk_binding.binding = binding.binding_id;
+            switch (binding.type)
+            {
+            case MaterialBindingType::UniformBuffer:
+                vk_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                break;
+            case MaterialBindingType::StorageBuffer:
+                vk_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                break;
+            }
+            vk_binding.descriptorCount = binding.count;
+            vk_binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
+            bindings.push_back(vk_binding);
+        }
+
+        VkDescriptorSetLayoutCreateInfo create_info{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
+        create_info.bindingCount = bindings.size();
+        create_info.pBindings = bindings.data();
+
+        VkResult result = vkCreateDescriptorSetLayout(
+            *device, &create_info, nullptr, &descriptor_set_layout_
+        );
+        if (result != VK_SUCCESS) {
+            throw std::runtime_error("failed to create descriptor set layout!");
+        }
+    }
+
+    void VulkanInstanceGroup::create_pipeline_layout()
+    {
+        const auto device = render_target_->device();
+
+        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+        pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+
+        pipelineLayoutInfo.setLayoutCount = 1;
+        pipelineLayoutInfo.pSetLayouts = &descriptor_set_layout_;
+
+        VkResult result =
+            vkCreatePipelineLayout(*device, &pipelineLayoutInfo, nullptr, &pipeline_layout_);
+        if (result != VK_SUCCESS)
+            throw std::runtime_error("Could not create pipeline layout");
+    }
+
+    void VulkanInstanceGroup::create_pipeline()
     {
         const auto device = render_target_->device();
 
@@ -350,14 +407,6 @@ namespace saltus::vulkan
         colorBlending.attachmentCount = 1;
         colorBlending.pAttachments = &colorBlendAttachment;
 
-        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-        pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-
-        VkResult result =
-            vkCreatePipelineLayout(*device, &pipelineLayoutInfo, nullptr, &pipeline_layout_);
-        if (result != VK_SUCCESS)
-            throw std::runtime_error("Could not create pipeline layout");
-
         VkPipelineRenderingCreateInfoKHR pipeline_create{VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR};
         pipeline_create.colorAttachmentCount    = 1;
         pipeline_create.pColorAttachmentFormats = &render_target_->swapchain_image_format();
@@ -382,16 +431,25 @@ namespace saltus::vulkan
         pipeline_info.renderPass = nullptr;
         pipeline_info.subpass = 0;
 
-        result = vkCreateGraphicsPipelines(
+        VkResult result = vkCreateGraphicsPipelines(
             *device, nullptr, 1, &pipeline_info, nullptr, &pipeline_
         );
         if (result != VK_SUCCESS)
             throw std::runtime_error("Could not create graphics pipeline");
     }
 
-    void VulkanInstanceGroup::destroy_graphics_pipeline()
+    void VulkanInstanceGroup::destroy_descriptor_set_layout()
+    {
+        vkDestroyDescriptorSetLayout(*render_target_->device(), descriptor_set_layout_, nullptr);
+    }
+
+    void VulkanInstanceGroup::destroy_pipeline_layout()
+    {
+        vkDestroyPipelineLayout(*render_target_->device(), pipeline_layout_, nullptr);
+    }
+
+    void VulkanInstanceGroup::destroy_pipeline()
     {
         vkDestroyPipeline(*render_target_->device(), pipeline_, nullptr);
-        vkDestroyPipelineLayout(*render_target_->device(), pipeline_layout_, nullptr);
     }
 } // namespace saltus::vulkan
