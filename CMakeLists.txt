@@ -4,5 +4,6 @@ project(jumptable VERSION 1.0.0 LANGUAGES CXX)
 
 find_library(CRITERION NAMES criterion libcriterion REQUIRED)
 
+add_subdirectory(logger)
 add_subdirectory(matrix)
 add_subdirectory(jumptable)
