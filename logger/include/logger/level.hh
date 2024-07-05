@@ -5,25 +5,39 @@
 
 namespace logger
 {
-    template <Logger::log_level LEVEL>
+    template <typename LOG>
+    concept Loggable =
+        requires(const LOG& log, std::ostream& os) { os << log; };
+
+    const std::string RESET = "\x1B[0m";
+    const std::string GRAY = "\x1B[90m";
+    const std::string BLUE = "\x1B[94m";
+    const std::string WHITE = "\x1B[0m";
+    const std::string YELLOW = "\x1B[93m";
+    const std::string RED = "\x1B[91m";
+    const std::string DARKRED = "\x1B[1m\x1B[31m";
+
     class Level
     {
     public:
-        static constexpr Logger::log_level level = LEVEL;
+        Level(Logger::log_level level, const std::string& color);
 
-        Level(const std::ostream& os, const Logger& logger, const std::string& color);
+        Logger::log_level get_level() const;
 
         template <Loggable LOG>
-        Level& operator<<(const LOG& log);
+        const Level& operator<<(const LOG& log) const;
 
     private:
-        static const std::string RESET;
-
-    private:
-        const std::ostream& os_;
-        const Logger& logger_;
+        const Logger::log_level level_;
         const std::string color_;
     };
+
+    const Level trace(0, GRAY);
+    const Level debug(1, BLUE);
+    const Level info(2, WHITE);
+    const Level warn(3, YELLOW);
+    const Level error(4, RED);
+    const Level fatal(5, DARKRED);
 } // namespace logger
 
 #include <logger/level.hxx>
