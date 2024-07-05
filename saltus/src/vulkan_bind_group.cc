@@ -66,8 +66,10 @@ namespace saltus::vulkan
 
     void VulkanBindGroup::set_binding(
         uint32_t binding_id,
+        const std::shared_ptr<Buffer> &buffer,
         uint32_t array_index,
-        std::span<const std::shared_ptr<Buffer>> buffers
+        uint32_t offset,
+        std::optional<uint32_t> size
     ) {
         auto *bind_group = layout()->get_binding(binding_id);
         if (!bind_group)
@@ -82,26 +84,21 @@ namespace saltus::vulkan
             throw std::runtime_error("Cannot set a binding with a buffer if the binding isn't a buffer type");
         }
 
-        std::vector<VkDescriptorBufferInfo> binfos{};
-        binfos.reserve(buffers.size());
-        for (const auto &buffer : buffers)
-        {
-            auto vkBuffer = std::dynamic_pointer_cast<VulkanBuffer>(buffer);
+        auto vkBuffer = std::dynamic_pointer_cast<VulkanBuffer>(buffer);
 
-            binfos.push_back({
-                .buffer = vkBuffer->buffer(),
-                .offset = 0,
-                .range = VK_WHOLE_SIZE,
-            });
-        }
+        VkDescriptorBufferInfo buff_info {
+            .buffer = vkBuffer->buffer(),
+            .offset = offset,
+            .range = size.value_or(VK_WHOLE_SIZE),
+        };
 
         VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
         write.dstSet = descriptor_set_;
         write.dstBinding = binding_id;
         write.dstArrayElement = array_index;
-        write.descriptorCount = binfos.size();
         write.descriptorType = binding_type_to_descriptor_type(bind_group->type);
-        write.pBufferInfo = binfos.data();
+        write.descriptorCount = 1;
+        write.pBufferInfo = &buff_info;
 
         vkUpdateDescriptorSets(*device_, 1, &write, 0, nullptr);
     }

@@ -6,7 +6,6 @@
 #include <saltus/renderer.hh>
 #include <saltus/material.hh>
 #include <unistd.h>
-#include "saltus/bind_group.hh"
 #include "saltus/buffer.hh"
 #include "saltus/byte_array.hh"
 #include "saltus/mesh.hh"
@@ -117,18 +116,16 @@ int main()
     });
     auto material = renderer->create_material(material_info);
 
-    std::vector<std::shared_ptr<saltus::InstanceGroup>> instance_groups;
-
-    instance_groups.push_back(renderer->create_instance_group({
+    auto instance_group = renderer->create_instance_group({
         .material = material,
         .mesh = mesh,
         .bind_groups = { bind_group }
-    }));
+    });
 
-    auto render = [&renderer,&instance_groups]() {
+    auto render = [&renderer,&instance_group]() {
         std::cout << "Rendering...\n";
         renderer->render({
-            .instance_groups = instance_groups,
+            .instance_groups = { instance_group },
         });
         std::cout << "Finished rendering !\n";
     };

@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <memory>
-#include <span>
+#include <optional>
 #include "saltus/bind_group_layout.hh"
 #include "saltus/buffer.hh"
 
@@ -27,17 +27,10 @@ namespace saltus
 
         virtual void set_binding(
             uint32_t binding_id,
-            const std::shared_ptr<Buffer> &buffer
-        );
-        virtual void set_binding(
-            uint32_t binding_id,
-            uint32_t array_index,
-            const std::shared_ptr<Buffer> &buffer
-        );
-        virtual void set_binding(
-            uint32_t binding_id,
-            uint32_t array_index,
-            std::span<const std::shared_ptr<Buffer>> buffers
+            const std::shared_ptr<Buffer> &buffer,
+            uint32_t array_index = 0,
+            uint32_t offset = 0,
+            std::optional<uint32_t> size = std::nullopt
         ) = 0;
 
     protected:
