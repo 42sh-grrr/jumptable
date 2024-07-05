@@ -6,6 +6,7 @@
 #include <saltus/renderer.hh>
 #include <saltus/material.hh>
 #include <unistd.h>
+#include "saltus/bind_group.hh"
 #include "saltus/buffer.hh"
 #include "saltus/byte_array.hh"
 #include "saltus/mesh.hh"
@@ -37,6 +38,33 @@ int main()
     auto renderer = saltus::Renderer::create(window);
     std::cout << "Creating rendering data...\n";
 
+    auto bind_group_layout = renderer->create_bind_group_layout({
+        .bindings = {
+            {
+                .type = saltus::BindingType::UniformBuffer,
+                .count = 1,
+                .binding_id = 0,
+            }
+        }
+    });
+    auto bind_group = renderer->create_bind_group({
+        .layout = bind_group_layout,
+    });
+
+    std::vector<float> uniform_data = {
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f,
+    };
+    auto uniform_buffer = renderer->create_buffer({
+        .usages = saltus::BufferUsages().with_uniform(),
+        .size = uniform_data.size() * sizeof(float),
+        .data = reinterpret_cast<uint8_t*>(uniform_data.data()),
+    });
+
+    bind_group->set_binding(0, uniform_buffer);
+
     saltus::MeshCreateInfo mesh_info{};
     mesh_info.primitive_topology = saltus::PritmitiveTopology::TriangleList;
     mesh_info.vertex_count = 3;
@@ -67,6 +95,7 @@ int main()
     auto mesh = renderer->create_mesh(mesh_info);
 
     saltus::MaterialCreateInfo material_info{};
+    material_info.bind_group_layouts.push_back(bind_group_layout);
     material_info.primitive_topology = saltus::PritmitiveTopology::TriangleList;
     material_info.vertex_shader = renderer->create_shader({
         .kind = saltus::ShaderKind::Vertex,
@@ -86,21 +115,26 @@ int main()
         .name = "color",
         .type = saltus::VertexAttributeType::Vec3f,
     });
-    material_info.bindings.push_back({
-        .type = saltus::MaterialBindingType::UniformBuffer,
-        .count = 1,
-        .binding_id = 0,
-    });
     auto material = renderer->create_material(material_info);
 
     std::vector<std::shared_ptr<saltus::InstanceGroup>> instance_groups;
+
     instance_groups.push_back(renderer->create_instance_group({
         .material = material,
         .mesh = mesh,
+        .bind_groups = { bind_group }
     }));
-    saltus::RenderInfo render_info {
-        .instance_groups = instance_groups,
+
+    auto render = [&renderer,&instance_groups]() {
+        std::cout << "Rendering...\n";
+        renderer->render({
+            .instance_groups = instance_groups,
+        });
+        std::cout << "Finished rendering !\n";
     };
+
+    // Initial render because sometimes no expose is emited at the begining
+    render();
 
     std::cout << "Starting event loop!\n";
     for (;;)
@@ -111,9 +145,7 @@ int main()
 
         if (dynamic_cast<saltus::WindowExposeEvent*>(&*event))
         {
-            std::cout << "Rendering...\n";
-            renderer->render(render_info);
-            std::cout << "Finished rendering !\n";
+            render();
             continue;
         }
 

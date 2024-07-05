@@ -6,7 +6,8 @@ namespace saltus
 {
     InstanceGroup::InstanceGroup(InstanceGroupCreateInfo info):
         material_(info.material),
-        mesh_(info.mesh)
+        mesh_(info.mesh),
+        bind_groups_(info.bind_groups)
     {
         if (material_->primitive_topology() != mesh_->primitive_topology())
             throw std::runtime_error("InstanceGroup: Material's and mesh's primitive topology don't match");
@@ -41,6 +42,11 @@ namespace saltus
     const std::shared_ptr<Mesh> &InstanceGroup::mesh() const
     {
         return mesh_;
+    }
+
+    const std::vector<std::shared_ptr<BindGroup>> &InstanceGroup::bind_groups() const
+    {
+        return bind_groups_;
     }
 } // namespace saltus
 

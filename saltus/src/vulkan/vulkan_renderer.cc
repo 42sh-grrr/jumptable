@@ -10,6 +10,8 @@
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vk_enum_string_helper.h>
 #include <saltus/vulkan/vulkan_shader.hh>
+#include "saltus/vulkan/vulkan_bind_group_layout.hh"
+#include "saltus/vulkan/vulkan_bind_group.hh"
 #include "saltus/vulkan/vulkan_material.hh"
 #include "saltus/vulkan/vulkan_mesh.hh"
 #include "saltus/vulkan/vulkan_render_target.hh"
@@ -181,6 +183,16 @@ namespace saltus::vulkan
     std::shared_ptr<Mesh> VulkanRenderer::create_mesh(MeshCreateInfo info)
     {
         return std::make_shared<VulkanMesh>(device_, info);
+    }
+
+    std::shared_ptr<BindGroupLayout> VulkanRenderer::create_bind_group_layout(BindGroupLayoutCreateInfo info)
+    {
+        return std::make_shared<VulkanBindGroupLayout>(device_, info);
+    }
+
+    std::shared_ptr<BindGroup> VulkanRenderer::create_bind_group(BindGroupCreateInfo info)
+    {
+        return std::make_shared<VulkanBindGroup>(device_, info);
     }
 
     std::shared_ptr<InstanceGroup> VulkanRenderer::create_instance_group(InstanceGroupCreateInfo info)

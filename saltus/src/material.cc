@@ -6,11 +6,12 @@ namespace saltus
     MaterialCreateInfo::MaterialCreateInfo()
     {
         // zero value is already a good default
+        // this constructor is only to prevent struct literal instantiation
     }
 
     Material::Material(MaterialCreateInfo create_info):
+        bind_group_layouts_(create_info.bind_group_layouts),
         vertex_attributes_(create_info.vertex_attributes),
-        bindings_(create_info.bindings),
         vertex_shader_(create_info.vertex_shader),
         fragment_shader_(create_info.fragment_shader),
         front_face_(create_info.front_face),
@@ -26,14 +27,14 @@ namespace saltus
     Material::~Material()
     { }
 
+    const std::vector<std::shared_ptr<BindGroupLayout>> &Material::bind_group_layouts() const
+    {
+        return bind_group_layouts_;
+    }
+
     const std::vector<MaterialVertexAttribute> &Material::vertex_attributes() const
     {
         return vertex_attributes_;
-    }
-
-    const std::vector<MaterialBindingInfo> &Material::bindings() const
-    {
-        return bindings_;
     }
 
     const std::shared_ptr<Shader> &Material::vertex_shader() const

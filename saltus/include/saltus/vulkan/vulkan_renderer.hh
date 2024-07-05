@@ -23,6 +23,8 @@ namespace saltus::vulkan
         std::shared_ptr<Shader> create_shader(ShaderCreateInfo info) override;
         std::shared_ptr<Material> create_material(MaterialCreateInfo) override;
         std::shared_ptr<Mesh> create_mesh(MeshCreateInfo) override;
+        std::shared_ptr<BindGroupLayout> create_bind_group_layout(BindGroupLayoutCreateInfo) override;
+        std::shared_ptr<BindGroup> create_bind_group(BindGroupCreateInfo) override;
         std::shared_ptr<InstanceGroup> create_instance_group(InstanceGroupCreateInfo) override;
 
     private:

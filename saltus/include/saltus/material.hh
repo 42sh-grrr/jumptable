@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 
+#include "saltus/bind_group_layout.hh"
 #include "saltus/shader.hh"
 #include "saltus/vertex_attribute.hh"
 
@@ -33,23 +34,10 @@ namespace saltus
         VertexAttributeType type;
     };
 
-    enum class MaterialBindingType
-    {
-        UniformBuffer,
-        StorageBuffer,
-    };
-
-    struct MaterialBindingInfo
-    {
-        MaterialBindingType type;
-        uint32_t count = 1;
-        uint32_t binding_id;
-    };
-
     struct MaterialCreateInfo
     {
+        std::vector<std::shared_ptr<BindGroupLayout>> bind_group_layouts;
         std::vector<MaterialVertexAttribute> vertex_attributes;
-        std::vector<MaterialBindingInfo> bindings;
 
         std::shared_ptr<Shader> vertex_shader;
         std::shared_ptr<Shader> fragment_shader;
@@ -68,8 +56,8 @@ namespace saltus
         Material(const Material &x) = delete;
         const Material &operator =(const Material &x) = delete;
 
+        const std::vector<std::shared_ptr<BindGroupLayout>> &bind_group_layouts() const;
         const std::vector<MaterialVertexAttribute> &vertex_attributes() const;
-        const std::vector<MaterialBindingInfo> &bindings() const;
 
         const std::shared_ptr<Shader> &vertex_shader() const;
         const std::shared_ptr<Shader> &fragment_shader() const;
@@ -82,8 +70,8 @@ namespace saltus
         Material(MaterialCreateInfo create_info);
 
     private:
+        std::vector<std::shared_ptr<BindGroupLayout>> bind_group_layouts_;
         std::vector<MaterialVertexAttribute> vertex_attributes_;
-        std::vector<MaterialBindingInfo> bindings_;
 
         std::shared_ptr<Shader> vertex_shader_;
         std::shared_ptr<Shader> fragment_shader_;

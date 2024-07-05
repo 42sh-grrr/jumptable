@@ -1,7 +1,9 @@
-#include "saltus/vulkan/vulkan_instance_group.hh"
+#include <algorithm>
+#include <iterator>
 #include <memory>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
+#include "saltus/vulkan/vulkan_instance_group.hh"
 #include "saltus/vertex_attribute.hh"
 #include "saltus/vulkan/vulkan_material.hh"
 
@@ -147,7 +149,16 @@ namespace saltus::vulkan
         if (!mesh_)
             throw std::runtime_error("Can only create vulkan instance group with a vulkan mesh");
 
-        create_descriptor_set_layout();
+        for (const auto &bind_group : create_info.bind_groups)
+        {
+            auto vk_bind_group =
+                std::dynamic_pointer_cast<VulkanBindGroup>(bind_group);
+            if (!vk_bind_group)
+                throw std::runtime_error("Can only create vulkan instance groups with a vulkan bind groups");
+            bind_groups_.push_back(vk_bind_group);
+            descriptor_sets_.push_back(vk_bind_group->descriptor_set());
+        }
+
         create_pipeline_layout();
         create_pipeline();
     }
@@ -155,7 +166,6 @@ namespace saltus::vulkan
     {
         destroy_pipeline();
         destroy_pipeline_layout();
-        destroy_descriptor_set_layout();
     }
 
     const std::shared_ptr<VulkanRenderTarget> &VulkanInstanceGroup::render_target() const
@@ -171,6 +181,11 @@ namespace saltus::vulkan
     const std::shared_ptr<VulkanMesh> &VulkanInstanceGroup::mesh() const
     {
         return mesh_;
+    }
+
+    const std::vector<std::shared_ptr<VulkanBindGroup>> &VulkanInstanceGroup::bind_groups() const
+    {
+        return bind_groups_;
     }
 
     VkPipelineLayout VulkanInstanceGroup::pipeline_layout() const
@@ -196,6 +211,14 @@ namespace saltus::vulkan
             vertex_buffers_.data(), vertex_offsets_.data()
         );
 
+        vkCmdBindDescriptorSets(
+            command_buffer,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            pipeline_layout_,
+            0, descriptor_sets_.size(), descriptor_sets_.data(),
+            0, nullptr
+        );
+
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
@@ -213,52 +236,21 @@ namespace saltus::vulkan
         vkCmdDraw(command_buffer, mesh_->vertex_count(), 1, 0, 0);
     }
 
-    void VulkanInstanceGroup::create_descriptor_set_layout()
-    {
-        const auto device = render_target_->device();
-
-        std::vector<VkDescriptorSetLayoutBinding> bindings{};
-        bindings.reserve(material_->bindings().size());
-
-        for (const auto &binding : material_->bindings())
-        {
-            VkDescriptorSetLayoutBinding vk_binding{};
-            vk_binding.binding = binding.binding_id;
-            switch (binding.type)
-            {
-            case MaterialBindingType::UniformBuffer:
-                vk_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                break;
-            case MaterialBindingType::StorageBuffer:
-                vk_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-                break;
-            }
-            vk_binding.descriptorCount = binding.count;
-            vk_binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
-            bindings.push_back(vk_binding);
-        }
-
-        VkDescriptorSetLayoutCreateInfo create_info{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-        create_info.bindingCount = bindings.size();
-        create_info.pBindings = bindings.data();
-
-        VkResult result = vkCreateDescriptorSetLayout(
-            *device, &create_info, nullptr, &descriptor_set_layout_
-        );
-        if (result != VK_SUCCESS) {
-            throw std::runtime_error("failed to create descriptor set layout!");
-        }
-    }
-
     void VulkanInstanceGroup::create_pipeline_layout()
     {
         const auto device = render_target_->device();
 
-        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-        pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        VkPipelineLayoutCreateInfo pipelineLayoutInfo{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
 
-        pipelineLayoutInfo.setLayoutCount = 1;
-        pipelineLayoutInfo.pSetLayouts = &descriptor_set_layout_;
+        std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
+        std::ranges::transform(
+            material_->bind_group_layouts(),
+            std::back_insert_iterator(descriptor_set_layouts),
+            [](const auto &l){ return l->layout(); }
+        );
+
+        pipelineLayoutInfo.setLayoutCount = descriptor_set_layouts.size();
+        pipelineLayoutInfo.pSetLayouts = descriptor_set_layouts.data();
 
         VkResult result =
             vkCreatePipelineLayout(*device, &pipelineLayoutInfo, nullptr, &pipeline_layout_);
@@ -283,13 +275,11 @@ namespace saltus::vulkan
             VK_DYNAMIC_STATE_SCISSOR,
         };
 
-        VkPipelineDynamicStateCreateInfo dynamic_state{};
-        dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        VkPipelineDynamicStateCreateInfo dynamic_state{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
         dynamic_state.dynamicStateCount = sizeof(dynamic_states) / sizeof(*dynamic_states);
         dynamic_state.pDynamicStates = dynamic_states;
 
-        VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-        vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        VkPipelineVertexInputStateCreateInfo vertexInputInfo{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
         std::vector<VkVertexInputBindingDescription> bindings{};
         std::vector<VkVertexInputAttributeDescription> attrs{};
 
@@ -328,8 +318,7 @@ namespace saltus::vulkan
         vertexInputInfo.vertexAttributeDescriptionCount = attrs.size();
         vertexInputInfo.pVertexAttributeDescriptions = attrs.data();
 
-        VkPipelineInputAssemblyStateCreateInfo input_assembly{};
-        input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+        VkPipelineInputAssemblyStateCreateInfo input_assembly{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
         switch (material_->primitive_topology())
         {
         case PritmitiveTopology::TriangleList:
@@ -346,13 +335,11 @@ namespace saltus::vulkan
             break;
         }
 
-        VkPipelineViewportStateCreateInfo viewport_state{};
-        viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+        VkPipelineViewportStateCreateInfo viewport_state{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
         viewport_state.viewportCount = 1;
         viewport_state.scissorCount = 1;
 
-        VkPipelineRasterizationStateCreateInfo rasterizer{};
-        rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+        VkPipelineRasterizationStateCreateInfo rasterizer{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
         rasterizer.depthClampEnable = VK_FALSE;
         rasterizer.rasterizerDiscardEnable = VK_FALSE;
         rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
@@ -389,8 +376,7 @@ namespace saltus::vulkan
         }
         rasterizer.depthBiasEnable = VK_FALSE;
 
-        VkPipelineMultisampleStateCreateInfo multisampling{};
-        multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+        VkPipelineMultisampleStateCreateInfo multisampling{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
         multisampling.sampleShadingEnable = VK_FALSE;
         multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
@@ -401,8 +387,7 @@ namespace saltus::vulkan
                                             | VK_COLOR_COMPONENT_A_BIT;
         colorBlendAttachment.blendEnable = VK_FALSE;
 
-        VkPipelineColorBlendStateCreateInfo colorBlending{};
-        colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        VkPipelineColorBlendStateCreateInfo colorBlending{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
         colorBlending.logicOpEnable = VK_FALSE;
         colorBlending.attachmentCount = 1;
         colorBlending.pAttachments = &colorBlendAttachment;
@@ -436,11 +421,6 @@ namespace saltus::vulkan
         );
         if (result != VK_SUCCESS)
             throw std::runtime_error("Could not create graphics pipeline");
-    }
-
-    void VulkanInstanceGroup::destroy_descriptor_set_layout()
-    {
-        vkDestroyDescriptorSetLayout(*render_target_->device(), descriptor_set_layout_, nullptr);
     }
 
     void VulkanInstanceGroup::destroy_pipeline_layout()

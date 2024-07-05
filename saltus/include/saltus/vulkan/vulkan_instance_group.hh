@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan_core.h>
 #include "saltus/instance_group.hh"
+#include "saltus/vulkan/vulkan_bind_group.hh"
 #include "saltus/vulkan/vulkan_material.hh"
 #include "saltus/vulkan/vulkan_mesh.hh"
 #include "saltus/vulkan/vulkan_render_target.hh"
@@ -21,6 +22,7 @@ namespace saltus::vulkan
 
         const std::shared_ptr<VulkanMaterial> &material() const;
         const std::shared_ptr<VulkanMesh> &mesh() const;
+        const std::vector<std::shared_ptr<VulkanBindGroup>> &bind_groups() const;
 
         VkPipelineLayout pipeline_layout() const;
         VkPipeline pipeline() const;
@@ -32,8 +34,9 @@ namespace saltus::vulkan
 
         std::shared_ptr<VulkanMaterial> material_;
         std::shared_ptr<VulkanMesh> mesh_;
+        std::vector<std::shared_ptr<VulkanBindGroup>> bind_groups_;
 
-        VkDescriptorSetLayout descriptor_set_layout_;
+        // TODO: Move into bind group layout ?
         VkPipelineLayout pipeline_layout_;
         VkPipeline pipeline_;
 
@@ -43,11 +46,11 @@ namespace saltus::vulkan
         std::vector<VkBuffer> vertex_buffers_;
         /// see vertex_buffers_
         std::vector<VkDeviceSize> vertex_offsets_;
+        /// Same as vertex_buffers_, but this is owned by the bind groups
+        std::vector<VkDescriptorSet> descriptor_sets_;
 
-        void create_descriptor_set_layout();
         void create_pipeline_layout();
         void create_pipeline();
-        void destroy_descriptor_set_layout();
         void destroy_pipeline_layout();
         void destroy_pipeline();
     };

@@ -3,6 +3,10 @@ cmake_minimum_required(VERSION 3.21.2)
 # Saltus library
 add_library(libsaltus STATIC)
 
+set_target_properties(libsaltus PROPERTIES
+    CXX_STANDARD 20
+)
+
 add_subdirectory(src)
 
 find_library(VULKAN NAMES vulkan libvulkan REQUIRED)
