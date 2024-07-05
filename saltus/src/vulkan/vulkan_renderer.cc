@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <vulkan/vulkan.h>
@@ -100,6 +101,8 @@ namespace saltus::vulkan
 
     void VulkanRenderer::render(const RenderInfo info)
     {
+        render_target_->resize_if_changed();
+
         auto device = device_->device();
 
         vkWaitForFences(device, 1, &in_flight_fences_[current_frame_], VK_TRUE, UINT64_MAX);

@@ -19,6 +19,7 @@ namespace saltus::vulkan
         const std::vector<VkImage> &swapchain_images() const;
         const std::vector<VkImageView> &swapchain_image_views() const;
         
+        void resize_if_changed();
         /// Full recreate the swapchain, necessary when for example a resize
         /// occures
         void recreate();

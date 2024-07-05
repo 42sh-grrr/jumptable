@@ -29,8 +29,8 @@ namespace saltus
             uint32_t binding_id,
             const std::shared_ptr<Buffer> &buffer,
             uint32_t array_index = 0,
-            uint32_t offset = 0,
-            std::optional<uint32_t> size = std::nullopt
+            uint64_t offset = 0,
+            std::optional<uint64_t> size = std::nullopt
         ) = 0;
 
     protected:

@@ -68,8 +68,8 @@ namespace saltus::vulkan
         uint32_t binding_id,
         const std::shared_ptr<Buffer> &buffer,
         uint32_t array_index,
-        uint32_t offset,
-        std::optional<uint32_t> size
+        uint64_t offset,
+        std::optional<uint64_t> size
     ) {
         auto *bind_group = layout()->get_binding(binding_id);
         if (!bind_group)

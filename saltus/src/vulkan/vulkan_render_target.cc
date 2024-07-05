@@ -1,5 +1,6 @@
 #include "saltus/vulkan/vulkan_render_target.hh"
 #include <algorithm>
+#include <iostream>
 #include <limits>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
@@ -41,6 +42,18 @@ namespace saltus::vulkan
     const std::vector<VkImageView> &VulkanRenderTarget::swapchain_image_views() const
     {
         return swapchain_image_views_;
+    }
+
+    void VulkanRenderTarget::resize_if_changed()
+    {
+        SwapChainSupportDetails swap_chain_support =
+            device_->get_physical_device_swap_chain_support_details();
+        VkExtent2D new_extent =
+            choose_swap_extent(swap_chain_support.capabilities);
+        if (new_extent.width != swapchain_extent_.width || new_extent.height != swapchain_extent_.height)
+        {
+            recreate();
+        }
     }
     
     void VulkanRenderTarget::recreate()
@@ -230,7 +243,6 @@ namespace saltus::vulkan
             swapchain_image_views_.push_back(image_view);
         }
     }
-
     
     void VulkanRenderTarget::destroy()
     {
