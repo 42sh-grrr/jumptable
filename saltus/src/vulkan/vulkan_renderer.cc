@@ -22,8 +22,6 @@ namespace saltus::vulkan
 {
     const int MAX_FRAMES_IN_FLIGHT = 2;
 
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wunused-function"
     static bool check_extension_is_supported(const char *name)
     {
         uint32_t supported_extension_count;
@@ -39,7 +37,6 @@ namespace saltus::vulkan
             }
         );
     }
-    #pragma GCC diagnostic pop
 
     static bool check_layer_is_supported(const char *name)
     {
