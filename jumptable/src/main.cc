@@ -103,11 +103,11 @@ int main()
     material_info.primitive_topology = saltus::PritmitiveTopology::TriangleList;
     material_info.vertex_shader = renderer->create_shader({
         .kind = saltus::ShaderKind::Vertex,
-        .source_code = read_full_file("saltus/shaders/shader.vert.spv"),
+        .source_code = read_full_file("build/saltus/shaders/shader.vert.spv"),
     });
     material_info.fragment_shader = renderer->create_shader({
         .kind = saltus::ShaderKind::Fragment,
-        .source_code = read_full_file("saltus/shaders/shader.frag.spv"),
+        .source_code = read_full_file("build/saltus/shaders/shader.frag.spv"),
     });
     material_info.vertex_attributes.push_back({
         .location = 0,

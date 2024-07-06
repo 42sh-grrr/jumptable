@@ -5,8 +5,10 @@ add_library(libsaltus STATIC)
 
 set_target_properties(libsaltus PROPERTIES
     CXX_STANDARD 20
+    OUTPUT_NAME saltus
 )
 
+add_subdirectory(shaders)
 add_subdirectory(src)
 
 target_compile_options(libsaltus PRIVATE
@@ -20,6 +22,10 @@ target_compile_options(libsaltus PRIVATE
 )
 target_link_options(libsaltus PRIVATE
     # "-fsanitize=address"
+)
+
+add_dependencies(libsaltus
+    shaders
 )
 
 find_library(VULKAN NAMES vulkan libvulkan REQUIRED)
