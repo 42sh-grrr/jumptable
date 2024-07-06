@@ -3,7 +3,13 @@
 namespace matrix
 {
     template <typename TYPE, int ROW>
-    Vector<TYPE, ROW>::Vector() : super()
+    Vector<TYPE, ROW>::Vector()
+        : super()
+    {}
+
+    template <typename TYPE, int ROW>
+    Vector<TYPE, ROW>::Vector(std::array<TYPE, ROW> flat)
+        : super(flat)
     {}
 
     template <typename TYPE, int ROW>

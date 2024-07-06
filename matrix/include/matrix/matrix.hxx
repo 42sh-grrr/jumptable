@@ -17,6 +17,18 @@ namespace matrix
     }
 
     template <typename TYPE, int ROW, int COL>
+    Matrix<TYPE, ROW, COL>::Matrix(std::array<TYPE, ROW * COL> flat)
+    {
+        for (int i = 0; i < ROW; i++)
+        {
+            for (int j = 0; j < COL; j++)
+            {
+                mat_[i][j] = flat[i * COL + j];
+            }
+        }
+    }
+
+    template <typename TYPE, int ROW, int COL>
     Matrix<TYPE, ROW, COL>
     Matrix<TYPE, ROW, COL>::operator+(const Matrix<TYPE, ROW, COL> mat) const
     {

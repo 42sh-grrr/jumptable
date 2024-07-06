@@ -20,6 +20,7 @@ namespace matrix
         using super = Matrix<TYPE, ROW, 1>;
 
         Vector();
+        Vector(std::array<TYPE, ROW> flat);
 
         const TYPE& operator[](int idx) const;
         TYPE& operator[](int idx);

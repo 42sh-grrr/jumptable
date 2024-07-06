@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ostream>
+#include <array>
 
 namespace matrix
 {
@@ -19,6 +19,7 @@ namespace matrix
         static constexpr int cols = COL;
 
         Matrix();
+        Matrix(std::array<TYPE, ROW * COL> flat);
 
         Matrix<TYPE, ROW, COL>
         operator+(const Matrix<TYPE, ROW, COL> mat) const;
@@ -43,11 +44,8 @@ namespace matrix
 
         Matrix<TYPE, COL, ROW> transpose() const;
 
-        // friend std::ostream &operator<<(std::ostream &os,
-        //                                 const Matrix<TYPE, ROW, COL>);
-
     protected:
-        typename std::enable_if<ENABLE, TYPE>::type mat_[rows][cols];
+        typename std::enable_if<ENABLE, TYPE>::type mat_[ROW][COL];
     };
 
     template <typename TYPE, int SIZE>
