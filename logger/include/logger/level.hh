@@ -1,13 +1,18 @@
 #pragma once
 
 #include <logger/logger.hh>
+#include <source_location>
 #include <string>
 
 namespace logger
 {
+    // clang-format off
     template <typename LOG>
-    concept Loggable =
-        requires(const LOG& log, std::ostream& os) { os << log; };
+    concept Loggable = requires(const LOG& log, std::ostream& os)
+    {
+        os << log;
+    };
+    // clang-format on
 
     const std::string RESET = "\x1B[0m";
     const std::string GRAY = "\x1B[90m";
@@ -20,24 +25,40 @@ namespace logger
     class Level
     {
     public:
-        Level(Logger::log_level level, const std::string& color);
+        friend class Stream;
 
-        Logger::log_level get_level() const;
+        class Stream
+        {
+        public:
+            Stream(const Level& level);
 
-        template <Loggable LOG>
-        const Level& operator<<(const LOG& log) const;
+            template <Loggable LOG>
+            const Stream& operator<<(const LOG& log) const;
+
+        private:
+            const Level& level_;
+        };
+
+        Level(Logger::log_level level, const std::string& color,
+              const std::string& tag) noexcept;
+
+        Logger::log_level get_level() const noexcept;
+
+        const Stream operator()(const std::source_location location =
+                                    std::source_location::current()) const;
 
     private:
         const Logger::log_level level_;
         const std::string color_;
+        const std::string tag_;
     };
 
-    const Level trace(0, GRAY);
-    const Level debug(1, BLUE);
-    const Level info(2, WHITE);
-    const Level warn(3, YELLOW);
-    const Level error(4, RED);
-    const Level fatal(5, DARKRED);
+    const Level trace(0, GRAY, "TRA");
+    const Level debug(1, BLUE, "DEB");
+    const Level info(2, WHITE, "INF");
+    const Level warn(3, YELLOW, "WAR");
+    const Level error(4, RED, "ERR");
+    const Level fatal(5, DARKRED, "FAT");
 } // namespace logger
 
 #include <logger/level.hxx>
