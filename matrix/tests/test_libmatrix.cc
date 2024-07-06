@@ -19,6 +19,22 @@ Test(libmatrix, create_matrix)
     }
 }
 
+Test(libmatrix, create_matrix_flat)
+{
+    matrix::Matrix<int, 4, 4> mat(
+        { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 });
+    for (int i = 0; i < mat.rows; i++)
+    {
+        for (int j = 0; j < mat.cols; j++)
+        {
+            int expected = (i == j) ? 1 : 0;
+            int actual = mat[i][j];
+            cr_expect_eq(actual, expected, "Expected %d. Got %d.", expected,
+                         actual);
+        }
+    }
+}
+
 Test(libmatrix, set_matrix)
 {
     matrix::Matrix<int, 4, 4> mat;
@@ -69,6 +85,19 @@ Test(libmatrix, multiply_matrices)
     for (int i = 0; i < vec.rows; i++)
     {
         int expected = 6 * i + 14;
+        int actual = vec[i];
+        cr_expect_eq(actual, expected, "Expected %d. Got %d.", expected,
+                     actual);
+    }
+}
+
+Test(libmatrix, create_vector_flat)
+{
+    matrix::Vector<int, 4> vec(
+        { 0, 0, 0, 1 });
+    for (int i = 0; i < vec.rows; i++)
+    {
+        int expected = (i == vec.rows - 1) ? 1 : 0;
         int actual = vec[i];
         cr_expect_eq(actual, expected, "Expected %d. Got %d.", expected,
                      actual);
