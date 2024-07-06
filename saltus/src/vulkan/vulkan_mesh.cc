@@ -8,7 +8,7 @@ namespace saltus::vulkan
     VulkanMesh::VulkanMesh(
         std::shared_ptr<VulkanDevice> device,
         MeshCreateInfo info
-    ): Mesh(info)
+    ): Mesh(info), device_(device)
     {
         for (const auto &attr : info.vertex_attributes)
         {

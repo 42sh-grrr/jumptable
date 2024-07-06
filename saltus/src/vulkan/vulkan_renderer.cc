@@ -1,10 +1,7 @@
 #include "saltus/vulkan/vulkan_renderer.hh"
 
-#include <algorithm>
 #include <cstdint>
 #include <cstring>
-#include <fstream>
-#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <vulkan/vulkan.h>
@@ -21,54 +18,6 @@
 
 namespace saltus::vulkan
 {
-    static bool check_extension_is_supported(const char *name)
-    {
-        uint32_t supported_extension_count;
-        vkEnumerateInstanceExtensionProperties(nullptr, &supported_extension_count, nullptr);
-        std::vector<VkExtensionProperties> supported_extensions(supported_extension_count);
-        vkEnumerateInstanceExtensionProperties(nullptr, &supported_extension_count, supported_extensions.data());
-
-        return std::any_of(
-            supported_extensions.cbegin(),
-            supported_extensions.cend(),
-            [&name](const VkExtensionProperties &extension) {
-                return strcmp(name, extension.extensionName) == 0;
-            }
-        );
-    }
-
-    static bool check_layer_is_supported(const char *name)
-    {
-        uint32_t supported_layer_count;
-        vkEnumerateInstanceLayerProperties(&supported_layer_count, nullptr);
-        std::vector<VkLayerProperties> supported_layers(supported_layer_count);
-        vkEnumerateInstanceLayerProperties(&supported_layer_count, supported_layers.data());
-
-        return std::any_of(
-            supported_layers.cbegin(),
-            supported_layers.cend(),
-            [&name](const VkLayerProperties &layer) {
-                return strcmp(name, layer.layerName) == 0;
-            }
-        );
-    }
-
-    static std::vector<char> read_full_file(const std::string& filename)
-    {
-        std::ifstream file(filename, std::ios::ate | std::ios::binary);
-
-        if (!file.is_open())
-            throw std::runtime_error("failed to open file!");
-
-        size_t file_size = static_cast<size_t>(file.tellg());
-        std::vector<char> buffer(file_size);
-
-        file.seekg(0);
-        file.read(buffer.data(), file_size);
-
-        return buffer;
-    }
-
     bool QueueFamilyIndices::is_complete()
     {
         return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value();
@@ -271,6 +220,8 @@ namespace saltus::vulkan
 
         const VkImageMemoryBarrier image_memory_barrier_init {
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext = nullptr,
+            .srcAccessMask = VK_ACCESS_NONE,
             .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
             .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -335,7 +286,9 @@ namespace saltus::vulkan
 
         const VkImageMemoryBarrier image_memory_barrier {
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext = nullptr,
             .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_NONE,
             .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,

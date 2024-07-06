@@ -52,8 +52,10 @@ namespace saltus::vulkan
         uint64_t offset,
         std::optional<uint64_t> size
     ) {
-        void *bdata = raw_buffer_->map(0, VK_WHOLE_SIZE);
-        memcpy(bdata, data, this->size());
+        size_t actual_size = size.value_or(this->size() - offset);
+
+        void *bdata = raw_buffer_->map(offset, size.value_or(VK_WHOLE_SIZE));
+        memcpy(bdata, data, actual_size);
         raw_buffer_->unmap();
     }
 }

@@ -19,6 +19,7 @@ namespace saltus::vulkan
     };
     VkPhysicalDeviceDynamicRenderingFeaturesKHR DYNAMIC_RENDERING_FEATURES = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR,
+        .pNext = nullptr,
         .dynamicRendering = true,
     };
     const VkPhysicalDeviceFeatures2 DEVICE_FEATURES2 {

@@ -10,11 +10,11 @@ set_target_properties(libsaltus PROPERTIES
 add_subdirectory(src)
 
 target_compile_options(libsaltus PRIVATE
-    # "-Wall"
-    # "-Wextra"
-    # "-Werror"
-    # "-Wold-style-cast"
-    # "-pedantic"
+    "-Wall"
+    "-Wextra"
+    "-Werror"
+    "-Wold-style-cast"
+    "-pedantic"
     # "-g3"
     # "-fsanitize=address"
 )

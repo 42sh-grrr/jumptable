@@ -22,7 +22,8 @@ namespace saltus::vulkan
             sizes.push_back(size);
         }
 
-        VkDescriptorPoolCreateInfo pool_info{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+        VkDescriptorPoolCreateInfo pool_info{};
+        pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pool_info.poolSizeCount = sizes.size();
         pool_info.pPoolSizes = sizes.data();
         pool_info.maxSets = 1;
@@ -32,7 +33,8 @@ namespace saltus::vulkan
         if (result != VK_SUCCESS)
             throw std::runtime_error("Could not create descriptor pool");
         
-        VkDescriptorSetAllocateInfo alloc_info{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+        VkDescriptorSetAllocateInfo alloc_info{};
+        alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         alloc_info.descriptorPool = descriptor_pool_;
         alloc_info.descriptorSetCount = 1;
         alloc_info.pSetLayouts = &bind_group_layout_->layout();
@@ -92,7 +94,8 @@ namespace saltus::vulkan
             .range = size.value_or(VK_WHOLE_SIZE),
         };
 
-        VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        VkWriteDescriptorSet write{};
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         write.dstSet = descriptor_set_;
         write.dstBinding = binding_id;
         write.dstArrayElement = array_index;

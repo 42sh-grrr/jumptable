@@ -25,6 +25,7 @@ namespace saltus::vulkan
             case VertexAttributeFormat::Vec4:
                 return VK_FORMAT_R8G8B8A8_UINT;
             }
+            break;
         case VertexAttributeDataType::i8:
             switch (type.format)
             {
@@ -37,6 +38,7 @@ namespace saltus::vulkan
             case VertexAttributeFormat::Vec4:
                 return VK_FORMAT_R8G8B8A8_SINT;
             }
+            break;
         case VertexAttributeDataType::u16:
             switch (type.format)
             {
@@ -49,6 +51,7 @@ namespace saltus::vulkan
             case VertexAttributeFormat::Vec4:
                 return VK_FORMAT_R16G16B16A16_UINT;
             }
+            break;
         case VertexAttributeDataType::i16:
             switch (type.format)
             {
@@ -61,6 +64,7 @@ namespace saltus::vulkan
             case VertexAttributeFormat::Vec4:
                 return VK_FORMAT_R16G16B16A16_SINT;
             }
+            break;
         case VertexAttributeDataType::u32:
             switch (type.format)
             {
@@ -73,6 +77,7 @@ namespace saltus::vulkan
             case VertexAttributeFormat::Vec4:
                 return VK_FORMAT_R32G32B32A32_UINT;
             }
+            break;
         case VertexAttributeDataType::i32:
             switch (type.format)
             {
@@ -85,6 +90,7 @@ namespace saltus::vulkan
             case VertexAttributeFormat::Vec4:
                 return VK_FORMAT_R32G32B32A32_SINT;
             }
+            break;
         case VertexAttributeDataType::f32:
             switch (type.format)
             {
@@ -97,6 +103,7 @@ namespace saltus::vulkan
             case VertexAttributeFormat::Vec4:
                 return VK_FORMAT_R32G32B32A32_SFLOAT;
             }
+            break;
         case VertexAttributeDataType::u64:
             switch (type.format)
             {
@@ -109,6 +116,7 @@ namespace saltus::vulkan
             case VertexAttributeFormat::Vec4:
                 return VK_FORMAT_R64G64B64A64_UINT;
             }
+            break;
         case VertexAttributeDataType::i64:
             switch (type.format)
             {
@@ -121,6 +129,7 @@ namespace saltus::vulkan
             case VertexAttributeFormat::Vec4:
                 return VK_FORMAT_R64G64B64A64_SINT;
             }
+            break;
         case VertexAttributeDataType::f64:
             switch (type.format)
             {
@@ -133,6 +142,7 @@ namespace saltus::vulkan
             case VertexAttributeFormat::Vec4:
                 return VK_FORMAT_R64G64B64A64_SFLOAT;
             }
+            break;
         }
 
         throw std::runtime_error("Invalid format");
@@ -240,7 +250,8 @@ namespace saltus::vulkan
     {
         const auto device = render_target_->device();
 
-        VkPipelineLayoutCreateInfo pipelineLayoutInfo{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+        pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
         std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
         std::ranges::transform(
@@ -275,11 +286,13 @@ namespace saltus::vulkan
             VK_DYNAMIC_STATE_SCISSOR,
         };
 
-        VkPipelineDynamicStateCreateInfo dynamic_state{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
+        VkPipelineDynamicStateCreateInfo dynamic_state{};
+        dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
         dynamic_state.dynamicStateCount = sizeof(dynamic_states) / sizeof(*dynamic_states);
         dynamic_state.pDynamicStates = dynamic_states;
 
-        VkPipelineVertexInputStateCreateInfo vertexInputInfo{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+        VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+        vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         std::vector<VkVertexInputBindingDescription> bindings{};
         std::vector<VkVertexInputAttributeDescription> attrs{};
 
@@ -318,7 +331,8 @@ namespace saltus::vulkan
         vertexInputInfo.vertexAttributeDescriptionCount = attrs.size();
         vertexInputInfo.pVertexAttributeDescriptions = attrs.data();
 
-        VkPipelineInputAssemblyStateCreateInfo input_assembly{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
+        VkPipelineInputAssemblyStateCreateInfo input_assembly{};
+        input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
         switch (material_->primitive_topology())
         {
         case PritmitiveTopology::TriangleList:
@@ -335,11 +349,13 @@ namespace saltus::vulkan
             break;
         }
 
-        VkPipelineViewportStateCreateInfo viewport_state{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
+        VkPipelineViewportStateCreateInfo viewport_state{};
+        viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
         viewport_state.viewportCount = 1;
         viewport_state.scissorCount = 1;
 
-        VkPipelineRasterizationStateCreateInfo rasterizer{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+        VkPipelineRasterizationStateCreateInfo rasterizer{};
+        rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
         rasterizer.depthClampEnable = VK_FALSE;
         rasterizer.rasterizerDiscardEnable = VK_FALSE;
         rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
@@ -376,7 +392,8 @@ namespace saltus::vulkan
         }
         rasterizer.depthBiasEnable = VK_FALSE;
 
-        VkPipelineMultisampleStateCreateInfo multisampling{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
+        VkPipelineMultisampleStateCreateInfo multisampling{};
+        multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
         multisampling.sampleShadingEnable = VK_FALSE;
         multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
@@ -387,19 +404,22 @@ namespace saltus::vulkan
                                             | VK_COLOR_COMPONENT_A_BIT;
         colorBlendAttachment.blendEnable = VK_FALSE;
 
-        VkPipelineColorBlendStateCreateInfo colorBlending{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
+        VkPipelineColorBlendStateCreateInfo colorBlending{};
+        colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         colorBlending.logicOpEnable = VK_FALSE;
         colorBlending.attachmentCount = 1;
         colorBlending.pAttachments = &colorBlendAttachment;
 
-        VkPipelineRenderingCreateInfoKHR pipeline_create{VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR};
+        VkPipelineRenderingCreateInfoKHR pipeline_create{};
+        pipeline_create.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
         pipeline_create.colorAttachmentCount    = 1;
         pipeline_create.pColorAttachmentFormats = &render_target_->swapchain_image_format();
         // TODO: Depth buffer
         // pipeline_create.depthAttachmentFormat   = render_target_->swapchain_image_format();
         // pipeline_create.stencilAttachmentFormat = render_target_->swapchain_image_format();
 
-        VkGraphicsPipelineCreateInfo pipeline_info{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
+        VkGraphicsPipelineCreateInfo pipeline_info{};
+        pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         pipeline_info.pNext = &pipeline_create;
         pipeline_info.stageCount = sizeof(shader_stages) / sizeof(*shader_stages);
         pipeline_info.pStages = shader_stages;

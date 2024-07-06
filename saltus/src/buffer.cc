@@ -32,7 +32,7 @@ namespace saltus
     }
 
     Buffer::Buffer(BufferCreateInfo info):
-        usages_(info.usages), size_(info.size), access_hint_(info.access_hint)
+        usages_(info.usages), access_hint_(info.access_hint), size_(info.size)
     { }
 
     Buffer::~Buffer()
