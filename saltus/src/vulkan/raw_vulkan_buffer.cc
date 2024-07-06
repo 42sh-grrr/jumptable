@@ -1,4 +1,5 @@
 #include "saltus/vulkan/raw_vulkan_buffer.hh"
+#include <vulkan/vulkan_core.h>
 
 namespace saltus::vulkan
 {
@@ -32,9 +33,12 @@ namespace saltus::vulkan
         if (result != VK_SUCCESS)
             throw std::runtime_error("Could not create buffer");
     }
+
     RawVulkanBuffer::~RawVulkanBuffer()
     {
-        
+        vkDestroyBuffer(*device_, buffer_, nullptr);
+        if (memory_ != nullptr)
+            vkFreeMemory(*device_, memory_, nullptr);
     }
 
     RawVulkanBuffer::operator VkBuffer() const
