@@ -7,9 +7,17 @@ namespace saltus
     class WindowEvent
     {
     public:
+        WindowEvent(const WindowEvent&) = delete;
+        WindowEvent(WindowEvent&&) = delete;
+        WindowEvent& operator=(const WindowEvent&) = delete;
+        WindowEvent& operator=(WindowEvent&&) = delete;
         virtual ~WindowEvent() = default;
 
         virtual const char *name() const = 0;
+
+    protected:
+        WindowEvent() = default;
+
     private:
     };
 

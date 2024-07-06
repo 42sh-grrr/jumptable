@@ -1,14 +1,55 @@
 #include "saltus/vulkan/vulkan_render_target.hh"
+
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
+#include <vulkan/vk_enum_string_helper.h>
+#include <logger/level.hh>
+#include "saltus/renderer.hh"
 
 namespace saltus::vulkan
 {
-    VulkanRenderTarget::VulkanRenderTarget(std::shared_ptr<VulkanDevice> device):
-        device_(device)
+    VkPresentModeKHR renderer_present_mode_to_vulkan_present_mode(RendererPresentMode mode)
     {
+        switch (mode)
+        {
+        case RendererPresentMode::Immediate:
+            return VK_PRESENT_MODE_IMMEDIATE_KHR;
+        case RendererPresentMode::Mailbox:
+            return VK_PRESENT_MODE_MAILBOX_KHR;
+        case RendererPresentMode::VSync:
+            return VK_PRESENT_MODE_FIFO_KHR;
+        }
+        throw std::runtime_error("Unknown present mode");
+    }
+
+    RendererPresentMode vulkan_present_mode_to_renderer_present_mode(VkPresentModeKHR mode)
+    {
+        switch (mode)
+        {
+        case VK_PRESENT_MODE_IMMEDIATE_KHR:
+            return RendererPresentMode::Immediate;
+        case VK_PRESENT_MODE_MAILBOX_KHR:
+            return RendererPresentMode::Immediate;
+        case VK_PRESENT_MODE_FIFO_KHR:
+            return RendererPresentMode::VSync;
+        case VK_PRESENT_MODE_FIFO_RELAXED_KHR:
+            throw std::runtime_error("Unknown present mode");
+        case VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR:
+            throw std::runtime_error("Unknown present mode");
+        case VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR:
+            throw std::runtime_error("Unknown present mode");
+        case VK_PRESENT_MODE_MAX_ENUM_KHR:
+            throw std::runtime_error("Unknown present mode");
+        }
+        throw std::runtime_error("Unknown present mode");
+    }
+
+    VulkanRenderTarget::VulkanRenderTarget(
+        std::shared_ptr<VulkanDevice> device,
+        RendererPresentMode target_present_mode
+    ): device_(device), target_present_mode_(target_present_mode) {
         create();
     }
 
@@ -22,6 +63,17 @@ namespace saltus::vulkan
         return device_;
     }
 
+    const RendererPresentMode &VulkanRenderTarget::target_present_mode() const
+    {
+        return target_present_mode_;
+    }
+
+    void VulkanRenderTarget::target_present_mode(RendererPresentMode present_mode)
+    {
+        target_present_mode_ = present_mode;
+        recreate();
+    }
+
     const VkFormat &VulkanRenderTarget::swapchain_image_format() const
     {
         return swapchain_image_format_;
@@ -33,6 +85,10 @@ namespace saltus::vulkan
     const VkSwapchainKHR &VulkanRenderTarget::swapchain() const
     {
         return swapchain_;
+    }
+    const VkPresentModeKHR &VulkanRenderTarget::present_mode() const
+    {
+        return present_mode_;
     }
     const std::vector<VkImage> &VulkanRenderTarget::swapchain_images() const
     {
@@ -82,12 +138,12 @@ namespace saltus::vulkan
     VkPresentModeKHR VulkanRenderTarget::choose_swap_chain_present_mode(
         const std::vector<VkPresentModeKHR> &availablePresentModes
     ) {
+        VkPresentModeKHR target = renderer_present_mode_to_vulkan_present_mode(target_present_mode_);
         for (const auto& availablePresentMode : availablePresentModes) {
-            if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+            if (availablePresentMode == target) {
                 return availablePresentMode;
             }
         }
-
         return VK_PRESENT_MODE_FIFO_KHR;
     }
 
@@ -152,11 +208,14 @@ namespace saltus::vulkan
         VkSurfaceFormatKHR surface_format =
             choose_swap_chain_format(swap_chain_support.formats);
         swapchain_image_format_ = surface_format.format;
-        VkPresentModeKHR present_mode =
-            choose_swap_chain_present_mode(swap_chain_support.present_modes);
         VkExtent2D extent =
             choose_swap_extent(swap_chain_support.capabilities);
         swapchain_extent_ = extent;
+        VkPresentModeKHR present_mode =
+            choose_swap_chain_present_mode(swap_chain_support.present_modes);
+        present_mode_ = present_mode;
+        logger::trace() << "Using present mode '"
+            << string_VkPresentModeKHR(present_mode) << "'\n";
 
         uint32_t max_image_count = swap_chain_support.capabilities.maxImageCount;
         uint32_t image_count = swap_chain_support.capabilities.minImageCount + 1;

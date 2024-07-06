@@ -13,6 +13,20 @@
 
 namespace saltus
 {
+    enum class RendererPresentMode
+    {
+        Immediate,
+        Mailbox,
+        VSync,
+    };
+    std::ostream& operator <<(std::ostream& outs, RendererPresentMode present_mode);
+
+    struct RendererCreateInfo
+    {
+        Window &window;
+        RendererPresentMode target_present_mode;
+    };
+
     struct RenderInfo
     {
         const std::vector<std::shared_ptr<InstanceGroup>> &instance_groups;
@@ -24,9 +38,12 @@ namespace saltus
     public:
         virtual ~Renderer();
 
-        static std::unique_ptr<Renderer> create(Window &window);
+        static std::unique_ptr<Renderer> create(RendererCreateInfo);
 
         Window &window();
+
+        const RendererPresentMode &target_present_mode() const;
+        virtual RendererPresentMode current_present_mode() const = 0;
 
         virtual void render(RenderInfo info) = 0;
         virtual void wait_for_idle() = 0;
@@ -40,9 +57,10 @@ namespace saltus
         virtual std::shared_ptr<InstanceGroup> create_instance_group(InstanceGroupCreateInfo) = 0;
 
     protected:
-        Renderer(Window &window);
+        Renderer(RendererCreateInfo);
 
         Window &window_;
+        RendererPresentMode target_present_mode_;
     };
 } // namespace saltus
 

@@ -34,6 +34,7 @@ find_library(XCB_ICCCM NAMES xcb-icccm libxcb-icccm REQUIRED)
 
 target_include_directories(libsaltus PUBLIC include)
 target_link_libraries(libsaltus PRIVATE libmatrix)
+target_link_libraries(libsaltus PRIVATE liblogger)
 target_link_libraries(libsaltus PRIVATE ${VULKAN})
 target_link_libraries(libsaltus PRIVATE ${XCB})
 target_link_libraries(libsaltus PRIVATE ${XCB_ICCCM})

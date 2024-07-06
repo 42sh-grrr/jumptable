@@ -7,7 +7,9 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vk_enum_string_helper.h>
-#include <saltus/vulkan/vulkan_shader.hh>
+#include <logger/level.hh>
+
+#include "saltus/vulkan/vulkan_shader.hh"
 #include "saltus/vulkan/config.hh"
 #include "saltus/vulkan/vulkan_bind_group_layout.hh"
 #include "saltus/vulkan/vulkan_bind_group.hh"
@@ -23,11 +25,11 @@ namespace saltus::vulkan
         return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value();
     }
 
-    VulkanRenderer::VulkanRenderer(Window &window): Renderer(window)
+    VulkanRenderer::VulkanRenderer(RendererCreateInfo info): Renderer(info)
     {
         instance_ = std::make_shared<VulkanInstance>();
-        device_ = std::make_shared<VulkanDevice>(window, instance_);
-        render_target_ = std::make_shared<VulkanRenderTarget>(device_);
+        device_ = std::make_shared<VulkanDevice>(info.window, instance_);
+        render_target_ = std::make_shared<VulkanRenderTarget>(device_, info.target_present_mode);
         
         create_command_pool_and_buffers();
         create_sync_objects();
@@ -42,6 +44,11 @@ namespace saltus::vulkan
             vkDestroyFence(device, in_flight_fences_[i], nullptr);
         }
         vkDestroyCommandPool(device, command_pool_, nullptr);
+    }
+
+    RendererPresentMode VulkanRenderer::current_present_mode() const
+    {
+        return vulkan_present_mode_to_renderer_present_mode(render_target_->present_mode());
     }
 
     void VulkanRenderer::render(const RenderInfo info)

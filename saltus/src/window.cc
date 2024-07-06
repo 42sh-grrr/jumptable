@@ -62,29 +62,29 @@ namespace saltus
             }
             case XCB_KEY_PRESS: {
                 auto keypress = reinterpret_cast<xcb_key_press_event_t *>(event);
-                return std::make_unique<WindowKeyPressEvent>(WindowKeyPressEvent({
+                return std::make_unique<WindowKeyPressEvent>(WindowKeyPressEvent::Data{
                     .keycode = keypress->detail,
-                }));
+                });
             }
             case XCB_KEY_RELEASE: {
                 auto keyrelease = reinterpret_cast<xcb_key_release_event_t *>(event);
-                return std::make_unique<WindowKeyReleaseEvent>(WindowKeyReleaseEvent({
+                return std::make_unique<WindowKeyReleaseEvent>(WindowKeyReleaseEvent::Data{
                     .keycode = keyrelease->detail,
-                }));
+                });
             }
             case XCB_MOTION_NOTIFY: {
                 auto motion = reinterpret_cast<xcb_motion_notify_event_t *>(event);
-                return std::make_unique<WindowMouseMoveEvent>(WindowMouseMoveEvent({
+                return std::make_unique<WindowMouseMoveEvent>(WindowMouseMoveEvent::Data{
                     .x = motion->event_x,
                     .y = motion->event_y,
                     .root_x = motion->root_x,
                     .root_y = motion->root_y,
                     .mouse_buttons = static_cast<uint8_t>(motion->state >> 8),
-                }));
+                });
             }
             case XCB_BUTTON_PRESS: {
                 auto button = reinterpret_cast<xcb_button_press_event_t *>(event);
-                return std::make_unique<WindowMouseButtonPressEvent>(WindowMouseButtonPressEvent({
+                return std::make_unique<WindowMouseButtonPressEvent>(WindowMouseButtonPressEvent::Data{
                     .mouse = {
                         .x = button->event_x,
                         .y = button->event_y,
@@ -93,11 +93,11 @@ namespace saltus
                         .mouse_buttons = static_cast<uint8_t>(button->state >> 8),
                     },
                     .pressed_button = button->detail,
-                }));
+                });
             }
             case XCB_BUTTON_RELEASE: {
                 auto button = reinterpret_cast<xcb_button_release_event_t *>(event);
-                return std::make_unique<WindowMouseButtonReleaseEvent>(WindowMouseButtonReleaseEvent({
+                return std::make_unique<WindowMouseButtonReleaseEvent>(WindowMouseButtonReleaseEvent::Data{
                     .mouse = {
                         .x = button->event_x,
                         .y = button->event_y,
@@ -106,14 +106,14 @@ namespace saltus
                         .mouse_buttons = static_cast<uint8_t>(button->state >> 8),
                     },
                     .released_button = button->detail,
-                }));
+                });
             }
             case XCB_EXPOSE: {
                 auto expose = reinterpret_cast<xcb_expose_event_t *>(event);
-                return std::make_unique<WindowExposeEvent>(WindowExposeEvent({
+                return std::make_unique<WindowExposeEvent>(WindowExposeEvent::Data{
                     .width = expose->width,
                     .height = expose->height,
-                }));
+                });
             }
             default:
                 std::cerr << "Unknown event: " << (event->response_type & ~0x80) << "\n";

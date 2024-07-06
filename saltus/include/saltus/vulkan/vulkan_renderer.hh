@@ -13,8 +13,10 @@ namespace saltus::vulkan
     class VulkanRenderer: public Renderer
     {
     public:
-        VulkanRenderer(Window &window);
+        VulkanRenderer(RendererCreateInfo info);
         ~VulkanRenderer();
+
+        RendererPresentMode current_present_mode() const override;
 
         void render(RenderInfo info) override;
         void wait_for_idle() override;

@@ -1,10 +1,13 @@
+#include <iomanip>
 #include <iostream>
 #include <fstream>
+#include <chrono>
 #include <matrix/matrix.hh>
 #include <saltus/window.hh>
 #include <saltus/window_events.hh>
 #include <saltus/renderer.hh>
 #include <saltus/material.hh>
+#include <thread>
 #include <unistd.h>
 #include <logger/logger.hh>
 #include <matrix/vector.hh>
@@ -12,6 +15,8 @@
 #include <saltus/byte_array.hh>
 #include <saltus/mesh.hh>
 #include <saltus/vertex_attribute.hh>
+#include <variant>
+#include "quick_event_queue.hh"
 
 static std::vector<char> read_full_file(const std::string& filename)
 {
@@ -29,15 +34,30 @@ static std::vector<char> read_full_file(const std::string& filename)
     return buffer;
 }
 
-int main()
+struct ExitEvent
+{ };
+
+struct ShouldRenderEvent
+{ };
+
+struct RenderFinishedEvent
+{ };
+
+using QuickEvent = std::variant<
+    std::shared_ptr<saltus::WindowEvent>,
+    ExitEvent, ShouldRenderEvent, RenderFinishedEvent
+>;
+
+struct SharedData
 {
-    std::cout << "Creating window...\n";
-    auto window = saltus::WindowBuilder()
-        .title("bite")
-        .build();
-    std::cout << "Creating renderer...\n";
-    auto renderer = saltus::Renderer::create(window);
-    std::cout << "Creating rendering data...\n";
+    QuickEventQueue<QuickEvent> events;
+};
+
+void render_thread_fn(
+    saltus::Renderer *renderer,
+    SharedData *shared_data
+) {
+    auto receiver = shared_data->events.subscribe();
 
     auto bind_group_layout = renderer->create_bind_group_layout({
         .bindings = {
@@ -127,8 +147,9 @@ int main()
         .bind_groups = { bind_group }
     });
 
-    auto render = [&renderer,&instance_group]() {
-        std::cout << "Rendering...\n";
+    auto last_t = std::chrono::high_resolution_clock::now();
+    auto render = [&]() {
+        logger::debug() << "Rendering...\n";
         matrix::Vector4F vec;
         vec.x() = 0.f;
         vec.y() = 0.f;
@@ -138,32 +159,78 @@ int main()
             .instance_groups = { instance_group },
             .clear_color = vec,
         });
-        std::cout << "Finished rendering !\n";
+        logger::debug() << "Finished rendering !\n";
+        auto elapsed = std::chrono::high_resolution_clock::now() - last_t;
+        auto micros = std::chrono::duration_cast<std::chrono::microseconds>(elapsed);
+        logger::debug() << "Elapsed: " << micros << " (" << std::setprecision(2) << std::fixed << (1.e6 / micros.count()) << ") fps\n";
+
+        last_t = std::chrono::high_resolution_clock::now();
+        shared_data->events.send(RenderFinishedEvent {});
     };
 
-    // Initial render because sometimes no expose is emited at the begining
-    render();
+    while (true)
+    {
+        auto event = receiver->poll_recv();
+        QuickEvent *event_ptr = event ? &event.value() : nullptr;
+        if (std::get_if<ExitEvent>(event_ptr))
+            break;
 
-    std::cout << "Starting event loop!\n";
+        render();
+    }
+}
+
+void events_thread_fn(
+    saltus::Window *window,
+    SharedData *shared_data
+) {
     for (;;)
     {
-        auto event = window.wait_event();
+        auto event = window->wait_event();
         if (!event)
             continue;
 
+        std::shared_ptr<saltus::WindowEvent> shared_event = std::move(event);
+        shared_data->events.send(shared_event);
+
         if (dynamic_cast<saltus::WindowExposeEvent*>(&*event))
-        {
-            render();
-            continue;
-        }
+            shared_data->events.send(ShouldRenderEvent { });
 
         if (dynamic_cast<saltus::WindowCloseRequestEvent*>(&*event))
             break;
     }
+    shared_data->events.send(ExitEvent { });
+    logger::info() << "Hi!\n";
+}
+
+int main()
+{
+    logger::info() << "Creating window...\n";
+    auto window = saltus::WindowBuilder()
+        .title("bite")
+        .build();
+    logger::info() << "Creating renderer...\n";
+    auto renderer = saltus::Renderer::create({
+        .window = window,
+        .target_present_mode = saltus::RendererPresentMode::VSync,
+        // .target_present_mode = saltus::RendererPresentMode::Immediate,
+    });
+    logger::info() << "Renderer presentaition mode: " << renderer->current_present_mode() << "\n";
+    logger::info() << "Creating rendering data...\n";
+
+    logger::info() << "Starting!\n";
+
+    SharedData shared_data {
+        .events = QuickEventQueue<QuickEvent>(),
+    };
+
+    std::thread render_thread(render_thread_fn, &*renderer, &shared_data);
+    std::thread events_thread(events_thread_fn, &window, &shared_data);
+    render_thread.join();
+    events_thread.join();
 
     renderer->wait_for_idle();
 
-    std::cout << "Bye bye !\n";
+    logger::info() << "Bye bye !\n";
 
     return 0;
 }
