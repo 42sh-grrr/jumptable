@@ -6,11 +6,12 @@
 #include <saltus/renderer.hh>
 #include <saltus/material.hh>
 #include <unistd.h>
-#include "matrix/vector.hh"
-#include "saltus/buffer.hh"
-#include "saltus/byte_array.hh"
-#include "saltus/mesh.hh"
-#include "saltus/vertex_attribute.hh"
+#include <logger/logger.hh>
+#include <matrix/vector.hh>
+#include <saltus/buffer.hh>
+#include <saltus/byte_array.hh>
+#include <saltus/mesh.hh>
+#include <saltus/vertex_attribute.hh>
 
 static std::vector<char> read_full_file(const std::string& filename)
 {
