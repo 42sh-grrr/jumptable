@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include "matrix/vector.hh"
 #include "saltus/bind_group.hh"
 #include "saltus/instance_group.hh"
 #include "saltus/material.hh"
@@ -15,6 +16,7 @@ namespace saltus
     struct RenderInfo
     {
         const std::vector<std::shared_ptr<InstanceGroup>> &instance_groups;
+        matrix::Vector4F clear_color;
     };
 
     class Renderer

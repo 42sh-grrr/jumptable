@@ -1,6 +1,5 @@
 #include "saltus/vulkan/vulkan_render_target.hh"
 #include <algorithm>
-#include <iostream>
 #include <limits>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>

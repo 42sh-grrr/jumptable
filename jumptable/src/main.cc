@@ -6,6 +6,7 @@
 #include <saltus/renderer.hh>
 #include <saltus/material.hh>
 #include <unistd.h>
+#include "matrix/vector.hh"
 #include "saltus/buffer.hh"
 #include "saltus/byte_array.hh"
 #include "saltus/mesh.hh"
@@ -127,8 +128,14 @@ int main()
 
     auto render = [&renderer,&instance_group]() {
         std::cout << "Rendering...\n";
+        matrix::Vector4F vec;
+        vec.x() = 0.f;
+        vec.y() = 0.f;
+        vec.z() = 0.f;
+        vec.w() = 1.f;
         renderer->render({
             .instance_groups = { instance_group },
+            .clear_color = vec,
         });
         std::cout << "Finished rendering !\n";
     };

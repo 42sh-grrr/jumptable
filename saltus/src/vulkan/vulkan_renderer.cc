@@ -265,8 +265,14 @@ namespace saltus::vulkan
 
         color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        VkClearValue clear_color = {{{0.,0.,0.,1.}}};
-        color_attachment.clearValue = clear_color;
+        color_attachment.clearValue = VkClearValue {
+            .color = {.float32{
+                info.clear_color.x(),
+                info.clear_color.y(),
+                info.clear_color.z(),
+                info.clear_color.w(),
+            }},
+        };
 
         VkRenderingAttachmentInfo attachments[] = { color_attachment };
         rendering_info.colorAttachmentCount = 1;
@@ -314,7 +320,7 @@ namespace saltus::vulkan
             &image_memory_barrier
         );
 
-        // <p> Prepare render image layout for presentation
+        // </> Prepare render image layout for presentation
 
         result = vkEndCommandBuffer(command_buffer);
         if (result != VK_SUCCESS)
