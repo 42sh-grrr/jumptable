@@ -6,4 +6,5 @@ find_library(CRITERION NAMES criterion libcriterion REQUIRED)
 
 add_subdirectory(logger)
 add_subdirectory(matrix)
+add_subdirectory(math)
 add_subdirectory(jumptable)
