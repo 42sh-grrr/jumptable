@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan_core.h>
 #include "saltus/buffer.hh"
+#include "saltus/vulkan/raw_vulkan_buffer.hh"
 #include "saltus/vulkan/vulkan_device.hh"
 
 namespace saltus::vulkan
@@ -15,22 +16,18 @@ namespace saltus::vulkan
         );
         ~VulkanBuffer();
 
-        operator VkBuffer() const;
+        RawVulkanBuffer &raw_buffer();
+        const RawVulkanBuffer &raw_buffer() const;
 
-        VkBuffer buffer() const;
-
-        void assign(const uint8_t *data);
+        void write(
+            const uint8_t *data,
+            uint64_t offset = 0,
+            std::optional<uint64_t> size = std::nullopt
+        ) override;
 
     private:
         std::shared_ptr<VulkanDevice> device_;
 
-        VkBuffer buffer_ = VK_NULL_HANDLE;
-        VkDeviceMemory memory_ = VK_NULL_HANDLE;
-
-        void alloc(VkMemoryPropertyFlags memory_properties);
-        void *map();
-        void unmap();
-
-        uint32_t find_mem_type(uint32_t type_filter_, VkMemoryPropertyFlags properties);
+        std::unique_ptr<RawVulkanBuffer> raw_buffer_;
     };
 }

@@ -4,10 +4,12 @@ namespace saltus
 {
     BufferCreateInfo buffer_from_byte_array(
         BufferUsages usages,
+        BufferAccessHint access_hint,
         const ByteArray &data
     ) {
         return {
             .usages = usages,
+            .access_hint = access_hint,
             .size = data.size(),
             .data = data.data(),
         };
@@ -30,7 +32,7 @@ namespace saltus
     }
 
     Buffer::Buffer(BufferCreateInfo info):
-        usages_(info.usages), size_(info.size)
+        usages_(info.usages), size_(info.size), access_hint_(info.access_hint)
     { }
 
     Buffer::~Buffer()
@@ -39,6 +41,11 @@ namespace saltus
     BufferUsages Buffer::usages() const
     {
         return usages_;
+    }
+
+    BufferAccessHint Buffer::access_hint() const
+    {
+        return access_hint_;
     }
 
     std::size_t Buffer::size() const

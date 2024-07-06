@@ -11,6 +11,7 @@
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vk_enum_string_helper.h>
 #include <saltus/vulkan/vulkan_shader.hh>
+#include "saltus/vulkan/config.hh"
 #include "saltus/vulkan/vulkan_bind_group_layout.hh"
 #include "saltus/vulkan/vulkan_bind_group.hh"
 #include "saltus/vulkan/vulkan_material.hh"
@@ -20,8 +21,6 @@
 
 namespace saltus::vulkan
 {
-    const int MAX_FRAMES_IN_FLIGHT = 2;
-
     static bool check_extension_is_supported(const char *name)
     {
         uint32_t supported_extension_count;

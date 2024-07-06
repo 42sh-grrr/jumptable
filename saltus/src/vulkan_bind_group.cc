@@ -87,7 +87,7 @@ namespace saltus::vulkan
         auto vkBuffer = std::dynamic_pointer_cast<VulkanBuffer>(buffer);
 
         VkDescriptorBufferInfo buff_info {
-            .buffer = vkBuffer->buffer(),
+            .buffer = vkBuffer->raw_buffer(),
             .offset = offset,
             .range = size.value_or(VK_WHOLE_SIZE),
         };

@@ -310,7 +310,7 @@ namespace saltus::vulkan
             attr.format = attribute_type_to_vulkan_format(material_attr->type);
             attrs.push_back(attr);
 
-            vertex_buffers_.push_back(mesh_->vertex_buffers()[mesh_attr_i]->buffer());
+            vertex_buffers_.push_back(mesh_->vertex_buffers()[mesh_attr_i]->raw_buffer());
             vertex_offsets_.push_back(0);
         }
         vertexInputInfo.vertexBindingDescriptionCount = bindings.size();

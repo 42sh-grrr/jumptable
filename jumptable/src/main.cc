@@ -58,6 +58,7 @@ int main()
     };
     auto uniform_buffer = renderer->create_buffer({
         .usages = saltus::BufferUsages().with_uniform(),
+        .access_hint = saltus::BufferAccessHint::Dynamic,
         .size = uniform_data.size() * sizeof(float),
         .data = reinterpret_cast<uint8_t*>(uniform_data.data()),
     });
@@ -72,6 +73,7 @@ int main()
         .type = saltus::VertexAttributeType::Vec2f,
         .buffer = renderer->create_buffer(saltus::buffer_from_byte_array(
             saltus::BufferUsages{}.with_vertex(),
+            saltus::BufferAccessHint::Static,
             saltus::to_bytearray(std::vector<float>{
                  0.0f,-0.5f,
                  0.5f, 0.5f,
@@ -84,6 +86,7 @@ int main()
         .type = saltus::VertexAttributeType::Vec3f,
         .buffer = renderer->create_buffer(saltus::buffer_from_byte_array(
             saltus::BufferUsages{}.with_vertex(),
+            saltus::BufferAccessHint::Static,
             saltus::to_bytearray(std::vector<float>{
                 1.0f, 0.0f, 0.0f,
                 0.0f, 1.0f, 0.0f,

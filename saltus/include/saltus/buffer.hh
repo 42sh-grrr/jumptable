@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include "saltus/byte_array.hh"
 
 namespace saltus
@@ -16,9 +17,18 @@ namespace saltus
         BufferUsages with_vertex();
     };
 
+    enum class BufferAccessHint
+    {
+        /// write << reads (i.e. world/mesh data)
+        Static,
+        /// write ~= reads (i.e. each frames)
+        Dynamic,
+    };
+
     struct BufferCreateInfo
     {
         BufferUsages usages;
+        BufferAccessHint access_hint;
         /// Allocated buffer size
         /// Can be non 0 with null data in which case data is kept uninitialized
         std::size_t size;
@@ -28,6 +38,7 @@ namespace saltus
 
     BufferCreateInfo buffer_from_byte_array(
         BufferUsages usages,
+        BufferAccessHint access_hint,
         const ByteArray &data
     );
 
@@ -39,15 +50,21 @@ namespace saltus
         Buffer& operator=(const Buffer&) = default;
 
         BufferUsages usages() const;
+        BufferAccessHint access_hint() const;
         std::size_t size() const;
 
-        virtual void assign(const uint8_t *data) = 0;
+        virtual void write(
+            const uint8_t *data,
+            uint64_t offset = 0,
+            std::optional<uint64_t> size = std::nullopt
+        ) = 0;
 
     protected:
         Buffer(BufferCreateInfo info);
 
     private:
         BufferUsages usages_;
+        BufferAccessHint access_hint_;
         std::size_t size_;
     };
 } // namespace saltus

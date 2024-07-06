@@ -9,6 +9,19 @@ set_target_properties(libsaltus PROPERTIES
 
 add_subdirectory(src)
 
+target_compile_options(libsaltus PRIVATE
+    # "-Wall"
+    # "-Wextra"
+    # "-Werror"
+    # "-Wold-style-cast"
+    # "-pedantic"
+    # "-g3"
+    # "-fsanitize=address"
+)
+target_link_options(libsaltus PRIVATE
+    # "-fsanitize=address"
+)
+
 find_library(VULKAN NAMES vulkan libvulkan REQUIRED)
 find_library(XCB NAMES xcb libxcb Xcb REQUIRED)
 find_library(XCB_ICCCM NAMES xcb-icccm libxcb-icccm REQUIRED)
