@@ -64,15 +64,10 @@ void render_thread_fn(
 ) {
     logger::info() << "Loading model...\n";
     // auto model = saltus::obj::load_obj("./test.obj");
-    auto model = saltus::obj::load_obj("./cube.obj");
+    auto model = saltus::obj::load_obj("./lion.obj");
     auto object = model.objects.at(0);
     logger::info() << "Model loaded !\n";
     logger::info() << "Vertex count: " << object.positions.size() << "\n";
-
-    for (const auto &color : object.colors)
-    {
-        logger::info() << color[0] << ", " << color[1] << ", " << color[2] << "\n";
-    }
 
     auto receiver = shared_data->events.subscribe();
 
@@ -130,6 +125,16 @@ void render_thread_fn(
             .data = reinterpret_cast<uint8_t*>(object.colors.data()),
         }),
     });
+    mesh_info.vertex_attributes.push_back({
+        .name = "normal",
+        .type = saltus::VertexAttributeType::Vec3f,
+        .buffer = renderer->create_buffer({
+            .usages = saltus::BufferUsages{}.with_vertex(),
+            .access_hint = saltus::BufferAccessHint::Static,
+            .size = object.normals.size() * sizeof(float) * 3,
+            .data = reinterpret_cast<uint8_t*>(object.normals.data()),
+        }),
+    });
     auto mesh = renderer->create_mesh(mesh_info);
 
     saltus::MaterialCreateInfo material_info{};
@@ -152,6 +157,11 @@ void render_thread_fn(
     material_info.vertex_attributes.push_back({
         .location = 1,
         .name = "color",
+        .type = saltus::VertexAttributeType::Vec3f,
+    });
+    material_info.vertex_attributes.push_back({
+        .location = 2,
+        .name = "normal",
         .type = saltus::VertexAttributeType::Vec3f,
     });
     auto material = renderer->create_material(material_info);
