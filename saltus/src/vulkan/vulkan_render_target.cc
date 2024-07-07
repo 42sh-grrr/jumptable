@@ -218,9 +218,12 @@ namespace saltus::vulkan
             << string_VkPresentModeKHR(present_mode) << "'\n";
 
         uint32_t max_image_count = swap_chain_support.capabilities.maxImageCount;
-        uint32_t image_count = swap_chain_support.capabilities.minImageCount + 1;
+        uint32_t min_image_count = swap_chain_support.capabilities.minImageCount;
+        uint32_t image_count = min_image_count + 1;
         if (max_image_count != 0 && image_count > max_image_count)
             image_count = max_image_count;
+        logger::trace() << "Using " << image_count << " swapchain images (min: "
+                    << min_image_count << ", max: " << max_image_count << ")\n";
 
         VkSwapchainCreateInfoKHR create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;

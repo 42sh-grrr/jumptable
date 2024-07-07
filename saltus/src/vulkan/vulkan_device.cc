@@ -5,7 +5,9 @@
 #include <set>
 #include <stdexcept>
 #include <vector>
+#include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vulkan_core.h>
+#include "logger/level.hh"
 #include "saltus/vulkan/vulkan_instance.hh"
 
 namespace saltus::vulkan
@@ -282,7 +284,7 @@ namespace saltus::vulkan
         // TODO: Remove lol
         if (strcmp(device_properties.deviceName, "NVIDIA GeForce GTX 1650 Ti") == 0)
             return false;
-        std::cout << "Device " << device_properties.deviceName << "\n";
+        logger::debug() << "Using device '" << device_properties.deviceName << "' (" << string_VkPhysicalDeviceType(device_properties.deviceType) << ")\n";
 
         // Check for dynamic rendering support
 
