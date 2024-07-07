@@ -1,4 +1,5 @@
 #include "saltus/buffer.hh"
+#include <stdexcept>
 
 namespace saltus
 {
@@ -33,7 +34,12 @@ namespace saltus
 
     Buffer::Buffer(BufferCreateInfo info):
         usages_(info.usages), access_hint_(info.access_hint), size_(info.size)
-    { }
+    {
+        if (info.size == 0)
+        {
+            throw std::runtime_error("Cannot create a zero-sized buffer");
+        }
+    }
 
     Buffer::~Buffer()
     { }

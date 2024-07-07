@@ -10,6 +10,11 @@ target_compile_options(jumptable PRIVATE
     "-Werror"
     "-Wold-style-cast"
     "-pedantic"
+    "-g3"
+    "-fsanitize=address"
+)
+target_link_options(jumptable PRIVATE
+    "-fsanitize=address"
 )
 
 target_link_libraries(jumptable PRIVATE libmatrix)

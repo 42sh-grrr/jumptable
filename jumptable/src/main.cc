@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <cstring>
 #include <iomanip>
 #include <iostream>
@@ -20,6 +21,7 @@
 #include <variant>
 #include "math/transformation.hh"
 #include "quick_event_queue.hh"
+#include "saltus/obj_loader.hh"
 
 static std::vector<char> read_full_file(const std::string& filename)
 {
@@ -60,6 +62,18 @@ void render_thread_fn(
     saltus::Renderer *renderer,
     SharedData *shared_data
 ) {
+    logger::info() << "Loading model...\n";
+    // auto model = saltus::obj::load_obj("./test.obj");
+    auto model = saltus::obj::load_obj("./cube.obj");
+    auto object = model.objects.at(0);
+    logger::info() << "Model loaded !\n";
+    logger::info() << "Vertex count: " << object.positions.size() << "\n";
+
+    for (const auto &color : object.colors)
+    {
+        logger::info() << color[0] << ", " << color[1] << ", " << color[2] << "\n";
+    }
+
     auto receiver = shared_data->events.subscribe();
 
     auto bind_group_layout = renderer->create_bind_group_layout({
@@ -85,7 +99,7 @@ void render_thread_fn(
         0.0f,
     };
     auto uniform_buffer = renderer->create_buffer({
-        .usages = saltus::BufferUsages().with_uniform(),
+        .usages = saltus::BufferUsages{}.with_uniform(),
         .access_hint = saltus::BufferAccessHint::Dynamic,
         .size = uniform_data.size() * sizeof(float),
         .data = reinterpret_cast<uint8_t*>(uniform_data.data()),
@@ -95,38 +109,33 @@ void render_thread_fn(
 
     saltus::MeshCreateInfo mesh_info{};
     mesh_info.primitive_topology = saltus::PritmitiveTopology::TriangleList;
-    mesh_info.vertex_count = 3;
+    mesh_info.vertex_count = object.positions.size();
     mesh_info.vertex_attributes.push_back({
         .name = "position",
-        .type = saltus::VertexAttributeType::Vec3f,
-        .buffer = renderer->create_buffer(saltus::buffer_from_byte_array(
-            saltus::BufferUsages{}.with_vertex(),
-            saltus::BufferAccessHint::Static,
-            saltus::to_bytearray(std::vector<float>{
-                -1.,  1., 0.,
-                 1.,  1., 0.,
-                 0., -1., 0.,
-            })
-        )),
+        .type = saltus::VertexAttributeType::Vec4f,
+        .buffer = renderer->create_buffer({
+            .usages = saltus::BufferUsages{}.with_vertex(),
+            .access_hint = saltus::BufferAccessHint::Static,
+            .size = object.positions.size() * sizeof(float) * 4,
+            .data = reinterpret_cast<uint8_t*>(object.positions.data()),
+        }),
     });
     mesh_info.vertex_attributes.push_back({
         .name = "color",
         .type = saltus::VertexAttributeType::Vec3f,
-        .buffer = renderer->create_buffer(saltus::buffer_from_byte_array(
-            saltus::BufferUsages{}.with_vertex(),
-            saltus::BufferAccessHint::Static,
-            saltus::to_bytearray(std::vector<float>{
-                1.0f, 0.0f, 0.0f,
-                0.0f, 1.0f, 0.0f,
-                0.0f, 0.0f, 1.0f
-            })
-        )),
+        .buffer = renderer->create_buffer({
+            .usages = saltus::BufferUsages{}.with_vertex(),
+            .access_hint = saltus::BufferAccessHint::Static,
+            .size = object.positions.size() * sizeof(float) * 3,
+            .data = reinterpret_cast<uint8_t*>(object.colors.data()),
+        }),
     });
     auto mesh = renderer->create_mesh(mesh_info);
 
     saltus::MaterialCreateInfo material_info{};
     material_info.bind_group_layouts.push_back(bind_group_layout);
     material_info.primitive_topology = saltus::PritmitiveTopology::TriangleList;
+    material_info.cull_mode = saltus::MaterialCullMode::None;
     material_info.vertex_shader = renderer->create_shader({
         .kind = saltus::ShaderKind::Vertex,
         .source_code = read_full_file("build/saltus/shaders/shader.vert.spv"),
@@ -138,7 +147,7 @@ void render_thread_fn(
     material_info.vertex_attributes.push_back({
         .location = 0,
         .name = "position",
-        .type = saltus::VertexAttributeType::Vec3f,
+        .type = saltus::VertexAttributeType::Vec4f,
     });
     material_info.vertex_attributes.push_back({
         .location = 1,
@@ -170,7 +179,7 @@ void render_thread_fn(
             ar, 0.001f, 100.f, std::numbers::pi_v<float> / 2.f
         );
         mvp_matrix *= math::transformation::translate3D(
-            0.f, 0.f, 2.f
+            0.f, -0.5f, 10.f
         );
         mvp_matrix *= math::transformation::rotate3Dy(time);
         mvp_matrix *= math::transformation::scale3D(

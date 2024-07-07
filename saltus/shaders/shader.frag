@@ -11,5 +11,6 @@ layout(binding = 0) uniform Ubo {
 
 void main() {
     // outColor = vec4((sin(ubo.time * 1.5 + 0.1) + 1.) / 2., (sin(ubo.time * 2. + 0.5) + 1.) / 2., (sin(ubo.time * 2.5 + 1.) + 1.) / 2., 1.0);
-    outColor = vec4(fragColor * abs(sin(ubo.time * 5.)), 1.);
+    outColor = vec4(fragColor, 1.);
+    // outColor = vec4(1.);
 }

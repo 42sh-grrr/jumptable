@@ -17,11 +17,11 @@ target_compile_options(libsaltus PRIVATE
     "-Werror"
     "-Wold-style-cast"
     "-pedantic"
-    # "-g3"
-    # "-fsanitize=address"
+    "-g3"
+    "-fsanitize=address"
 )
 target_link_options(libsaltus PRIVATE
-    # "-fsanitize=address"
+    "-fsanitize=address"
 )
 
 add_dependencies(libsaltus
