@@ -101,11 +101,11 @@ namespace saltus::vulkan
 
     VulkanDevice::~VulkanDevice()
     {
-        vkDestroySurfaceKHR(*instance_, surface_, nullptr);
-        vkDestroyDevice(device_, nullptr);
-
         vkDestroyCommandPool(device_, resettable_command_buffer_pool_, nullptr);
         vkDestroyCommandPool(device_, transient_command_buffer_pool_, nullptr);
+
+        vkDestroySurfaceKHR(*instance_, surface_, nullptr);
+        vkDestroyDevice(device_, nullptr);
     }
 
     VulkanDevice::operator VkDevice() const

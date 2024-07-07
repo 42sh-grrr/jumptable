@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan_core.h>
 
+#include "logger/level.hh"
 #include "saltus/renderer.hh"
 #include "saltus/vulkan/vulkan_instance_group.hh"
 

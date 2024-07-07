@@ -177,6 +177,8 @@ void render_thread_fn(
 
         render();
     }
+
+    renderer->wait_for_idle();
 }
 
 void events_thread_fn(
@@ -192,10 +194,10 @@ void events_thread_fn(
         std::shared_ptr<saltus::WindowEvent> shared_event = std::move(event);
         shared_data->events.send(shared_event);
 
-        if (dynamic_cast<saltus::WindowExposeEvent*>(&*event))
+        if (dynamic_cast<saltus::WindowExposeEvent*>(&*shared_event))
             shared_data->events.send(ShouldRenderEvent { });
 
-        if (dynamic_cast<saltus::WindowCloseRequestEvent*>(&*event))
+        if (dynamic_cast<saltus::WindowCloseRequestEvent*>(&*shared_event))
             break;
     }
     shared_data->events.send(ExitEvent { });
