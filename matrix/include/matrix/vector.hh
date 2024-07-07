@@ -70,17 +70,24 @@ namespace matrix
         }
     };
 
-    using Vector2F = Vector<float, 2>;
-    using Vector3F = Vector<float, 3>;
-    using Vector4F = Vector<float, 4>;
+    template <class T>
+    using Vector2 = Vector<T, 2>;
+    template <class T>
+    using Vector3 = Vector<T, 3>;
+    template <class T>
+    using Vector4 = Vector<T, 4>;
 
-    using Vector2D = Vector<double, 2>;
-    using Vector3D = Vector<double, 3>;
-    using Vector4D = Vector<double, 4>;
+    using Vector2F = Vector2<float>;
+    using Vector3F = Vector3<float>;
+    using Vector4F = Vector4<float>;
 
-    using Vector2I = Vector<int, 2>;
-    using Vector3I = Vector<int, 3>;
-    using Vector4I = Vector<int, 4>;
+    using Vector2D = Vector2<double>;
+    using Vector3D = Vector3<double>;
+    using Vector4D = Vector4<double>;
+
+    using Vector2I = Vector2<int>;
+    using Vector3I = Vector3<int>;
+    using Vector4I = Vector4<int>;
 } // namespace matrix
 
 #include <matrix/vector.hxx>
