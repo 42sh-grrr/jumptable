@@ -30,7 +30,7 @@ namespace saltus
     struct RenderInfo
     {
         const std::vector<std::shared_ptr<InstanceGroup>> &instance_groups;
-        matrix::Vector4F clear_color;
+        std::optional<matrix::Vector4F> clear_color;
     };
 
     class Renderer

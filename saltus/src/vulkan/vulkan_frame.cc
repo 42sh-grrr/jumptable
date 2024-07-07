@@ -2,7 +2,6 @@
 
 #include <vulkan/vulkan_core.h>
 
-#include "logger/level.hh"
 #include "saltus/renderer.hh"
 #include "saltus/vulkan/vulkan_instance_group.hh"
 
@@ -151,16 +150,21 @@ namespace saltus::vulkan
         color_attachment.imageView = image_view;
         color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        if (info.clear_color.has_value())
+            color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        else
+            color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        color_attachment.clearValue = VkClearValue {
-            .color = {.float32{
-                info.clear_color.x(),
-                info.clear_color.y(),
-                info.clear_color.z(),
-                info.clear_color.w(),
-            }},
-        };
+        if (info.clear_color.has_value()) {
+            color_attachment.clearValue = VkClearValue {
+                .color = {.float32{
+                    info.clear_color.value().x(),
+                    info.clear_color.value().y(),
+                    info.clear_color.value().z(),
+                    info.clear_color.value().w(),
+                }},
+            };
+        }
 
         VkRenderingAttachmentInfo attachments[] = { color_attachment };
         rendering_info.colorAttachmentCount = 1;

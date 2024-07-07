@@ -1,7 +1,6 @@
 #include "saltus/vulkan/vulkan_device.hh"
 #include <algorithm>
 #include <cstring>
-#include <iostream>
 #include <set>
 #include <stdexcept>
 #include <vector>
