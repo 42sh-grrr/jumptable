@@ -82,12 +82,30 @@ namespace saltus::vulkan
         vkGetDeviceQueue(device_, families.graphicsFamily.value(), 0, &graphics_queue_);
         vkGetDeviceQueue(device_, families.presentFamily.value(), 0, &present_queue_);
         vkGetDeviceQueue(device_, families.transferFamily.value(), 0, &transfer_queue_);
+
+        VkCommandPoolCreateInfo pool_info{};
+        pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pool_info.queueFamilyIndex = families.graphicsFamily.value();
+
+        result = vkCreateCommandPool(device_, &pool_info, nullptr, &resettable_command_buffer_pool_);
+        if (result != VK_SUCCESS)
+            throw std::runtime_error("Could not create command pool");
+
+        pool_info.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+
+        result = vkCreateCommandPool(device_, &pool_info, nullptr, &transient_command_buffer_pool_);
+        if (result != VK_SUCCESS)
+            throw std::runtime_error("Could not create command pool");
     }
 
     VulkanDevice::~VulkanDevice()
     {
         vkDestroySurfaceKHR(*instance_, surface_, nullptr);
         vkDestroyDevice(device_, nullptr);
+
+        vkDestroyCommandPool(device_, resettable_command_buffer_pool_, nullptr);
+        vkDestroyCommandPool(device_, transient_command_buffer_pool_, nullptr);
     }
 
     VulkanDevice::operator VkDevice() const
@@ -194,14 +212,29 @@ namespace saltus::vulkan
         return device_;
     }
 
-    VkQueue VulkanDevice::graphics_queue()
+    VkQueue VulkanDevice::graphics_queue() const
     {
         return graphics_queue_;
     }
 
-    VkQueue VulkanDevice::present_queue()
+    VkQueue VulkanDevice::present_queue() const
     {
         return present_queue_;
+    }
+
+    VkQueue VulkanDevice::transfer_queue() const
+    {
+        return transfer_queue_;
+    }
+
+    VkCommandPool VulkanDevice::resettable_command_buffer_pool() const
+    {
+        return resettable_command_buffer_pool_;
+    }
+
+    VkCommandPool VulkanDevice::transient_command_buffer_pool() const
+    {
+        return transient_command_buffer_pool_;
     }
 
     bool VulkanDevice::is_physical_device_suitable(VkPhysicalDevice physical_device)

@@ -49,9 +49,12 @@ namespace saltus::vulkan
         VkPhysicalDevice physical_device() const;
         VkDevice device() const;
 
-        VkQueue graphics_queue();
-        VkQueue present_queue();
-        VkQueue transfer_queue();
+        VkQueue graphics_queue() const;
+        VkQueue present_queue() const;
+        VkQueue transfer_queue() const;
+
+        VkCommandPool resettable_command_buffer_pool() const;
+        VkCommandPool transient_command_buffer_pool() const;
 
     private:
         std::shared_ptr<VulkanInstance> instance_;
@@ -65,6 +68,9 @@ namespace saltus::vulkan
         VkQueue graphics_queue_ = VK_NULL_HANDLE;
         VkQueue present_queue_ = VK_NULL_HANDLE;
         VkQueue transfer_queue_ = VK_NULL_HANDLE;
+
+        VkCommandPool resettable_command_buffer_pool_;
+        VkCommandPool transient_command_buffer_pool_;
 
         bool is_physical_device_suitable(VkPhysicalDevice physical_device);
         void choose_physical_device();

@@ -2,6 +2,7 @@
 
 #include "saltus/renderer.hh"
 #include "saltus/vulkan/vulkan_device.hh"
+#include "saltus/vulkan/vulkan_frame.hh"
 #include "saltus/vulkan/vulkan_instance.hh"
 #include "saltus/vulkan/vulkan_render_target.hh"
 
@@ -15,6 +16,10 @@ namespace saltus::vulkan
     public:
         VulkanRenderer(RendererCreateInfo info);
         ~VulkanRenderer();
+
+        const std::shared_ptr<VulkanInstance> &instance() const;
+        const std::shared_ptr<VulkanDevice> &device() const;
+        const std::shared_ptr<VulkanRenderTarget> &render_target() const;
 
         RendererPresentMode current_present_mode() const override;
 
@@ -34,21 +39,7 @@ namespace saltus::vulkan
         std::shared_ptr<VulkanDevice> device_;
         std::shared_ptr<VulkanRenderTarget> render_target_;
 
-        VkCommandPool command_pool_;
-        std::vector<VkCommandBuffer> command_buffers_;
-
-        std::vector<VkSemaphore> image_available_semaphores_;
-        std::vector<VkSemaphore> render_finished_semaphores_;
-        std::vector<VkFence> in_flight_fences_;
-
         int current_frame_ = 0;
-
-        void create_command_pool_and_buffers();
-        void create_sync_objects();
-
-        void record_command_buffer(
-            VkCommandBuffer command_buffer, uint32_t image_index,
-            const RenderInfo &info
-        );
+        std::vector<VulkanFrame> frames_;
     };
-}
+} // namespace saltus::vulkan
