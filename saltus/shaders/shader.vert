@@ -7,6 +7,7 @@ layout(location = 0) out vec3 fragColor;
 
 layout(binding = 0) uniform Ubo {
     mat4 mvp;
+    float time;
 } ubo;
 
 void main() {

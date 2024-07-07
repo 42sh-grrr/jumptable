@@ -77,6 +77,9 @@ void render_thread_fn(
         0.0f, 1.0f, 0.0f, 0.0f,
         0.0f, 0.0f, 1.0f, 0.0f,
         0.0f, 0.0f, 0.0f, 1.0f,
+
+        // time
+        0.0f,
     };
     auto uniform_buffer = renderer->create_buffer({
         .usages = saltus::BufferUsages().with_uniform(),
@@ -147,8 +150,14 @@ void render_thread_fn(
         .bind_groups = { bind_group }
     });
 
+    auto start_t = std::chrono::high_resolution_clock::now();
     auto last_t = std::chrono::high_resolution_clock::now();
     auto render = [&]() {
+        auto microseconds_time = (std::chrono::high_resolution_clock::now() - start_t);
+        float time = std::chrono::duration_cast<std::chrono::microseconds>(microseconds_time).count() / 1.e6f;
+        uniform_data[16] = time;
+        uniform_buffer->write(reinterpret_cast<uint8_t*>(uniform_data.data()));
+
         logger::debug() << "Rendering...\n";
         matrix::Vector4F vec;
         vec.x() = 0.f;
