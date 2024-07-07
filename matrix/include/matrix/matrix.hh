@@ -42,6 +42,7 @@ namespace matrix
         const TYPE* operator[](int idx) const;
         TYPE* operator[](int idx);
 
+        [[nodiscard]]
         Matrix<TYPE, COL, ROW> transpose() const;
 
     protected:

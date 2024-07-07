@@ -15,6 +15,7 @@ target_compile_options(jumptable PRIVATE
 target_link_libraries(jumptable PRIVATE libmatrix)
 target_link_libraries(jumptable PRIVATE libsaltus)
 target_link_libraries(jumptable PRIVATE liblogger)
+target_link_libraries(jumptable PRIVATE libmath)
 
 set_target_properties(jumptable PROPERTIES
     CXX_STANDARD 20

@@ -8,6 +8,7 @@
 #include <vulkan/vk_enum_string_helper.h>
 #include <logger/level.hh>
 
+#include "matrix/vector.hh"
 #include "saltus/vulkan/vulkan_shader.hh"
 #include "saltus/vulkan/config.hh"
 #include "saltus/vulkan/vulkan_bind_group_layout.hh"
@@ -57,6 +58,18 @@ namespace saltus::vulkan
     RendererPresentMode VulkanRenderer::current_present_mode() const
     {
         return vulkan_present_mode_to_renderer_present_mode(render_target_->present_mode());
+    }
+
+    void VulkanRenderer::target_present_mode(RendererPresentMode newmode)
+    {
+        render_target_->target_present_mode(newmode);
+        Renderer::target_present_mode(newmode);
+    }
+
+    matrix::Vector2<uint32_t> VulkanRenderer::framebuffer_size() const
+    {
+        auto extent = render_target_->swapchain_extent();
+        return matrix::Vector2<uint32_t>({ extent.width, extent.height });
     }
 
     void VulkanRenderer::render(const RenderInfo info)

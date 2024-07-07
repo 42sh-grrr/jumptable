@@ -44,6 +44,9 @@ namespace saltus
 
         const RendererPresentMode &target_present_mode() const;
         virtual RendererPresentMode current_present_mode() const = 0;
+        virtual void target_present_mode(RendererPresentMode);
+
+        virtual matrix::Vector2<uint32_t> framebuffer_size() const = 0;
 
         virtual void render(RenderInfo info) = 0;
         virtual void wait_for_idle() = 0;

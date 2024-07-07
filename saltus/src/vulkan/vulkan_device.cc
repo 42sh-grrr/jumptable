@@ -281,8 +281,8 @@ namespace saltus::vulkan
         VkPhysicalDeviceProperties device_properties{};
         vkGetPhysicalDeviceProperties(physical_device, &device_properties);
         // TODO: Remove lol
-        if (strcmp(device_properties.deviceName, "NVIDIA GeForce GTX 1650 Ti") == 0)
-            return false;
+        // if (strcmp(device_properties.deviceName, "NVIDIA GeForce GTX 1650 Ti") == 0)
+        //     return false;
         logger::debug() << "Using device '" << device_properties.deviceName << "' (" << string_VkPhysicalDeviceType(device_properties.deviceType) << ")\n";
 
         // Check for dynamic rendering support

@@ -1,8 +1,10 @@
+#include <cstring>
 #include <iomanip>
 #include <iostream>
 #include <fstream>
 #include <chrono>
 #include <matrix/matrix.hh>
+#include <numbers>
 #include <saltus/window.hh>
 #include <saltus/window_events.hh>
 #include <saltus/renderer.hh>
@@ -16,6 +18,7 @@
 #include <saltus/mesh.hh>
 #include <saltus/vertex_attribute.hh>
 #include <variant>
+#include "math/transformation.hh"
 #include "quick_event_queue.hh"
 
 static std::vector<char> read_full_file(const std::string& filename)
@@ -95,14 +98,14 @@ void render_thread_fn(
     mesh_info.vertex_count = 3;
     mesh_info.vertex_attributes.push_back({
         .name = "position",
-        .type = saltus::VertexAttributeType::Vec2f,
+        .type = saltus::VertexAttributeType::Vec3f,
         .buffer = renderer->create_buffer(saltus::buffer_from_byte_array(
             saltus::BufferUsages{}.with_vertex(),
             saltus::BufferAccessHint::Static,
             saltus::to_bytearray(std::vector<float>{
-                 0.0f,-0.5f,
-                 0.5f, 0.5f,
-                -0.5f, 0.5f
+                -1.,  1., 0.,
+                 1.,  1., 0.,
+                 0., -1., 0.,
             })
         )),
     });
@@ -135,7 +138,7 @@ void render_thread_fn(
     material_info.vertex_attributes.push_back({
         .location = 0,
         .name = "position",
-        .type = saltus::VertexAttributeType::Vec2f,
+        .type = saltus::VertexAttributeType::Vec3f,
     });
     material_info.vertex_attributes.push_back({
         .location = 1,
@@ -150,23 +153,39 @@ void render_thread_fn(
         .bind_groups = { bind_group }
     });
 
+    matrix::Matrix4F mvp_matrix;
+
     auto start_t = std::chrono::high_resolution_clock::now();
     auto last_t = std::chrono::high_resolution_clock::now();
     auto render = [&]() {
         auto microseconds_time = (std::chrono::high_resolution_clock::now() - start_t);
         float time = std::chrono::duration_cast<std::chrono::microseconds>(microseconds_time).count() / 1.e6f;
         uniform_data[16] = time;
+
+        auto buffsize = renderer->framebuffer_size();
+        float ar = static_cast<float>(buffsize.x()) / buffsize.y();
+        mvp_matrix = matrix::identity<float, 4>();
+
+        mvp_matrix *= math::transformation::perspective(
+            ar, 0.001f, 100.f, std::numbers::pi_v<float> / 2.f
+        );
+        mvp_matrix *= math::transformation::translate3D(
+            0.f, 0.f, 2.f
+        );
+        mvp_matrix *= math::transformation::rotate3Dy(time);
+        mvp_matrix *= math::transformation::scale3D(
+            1.f, -1.f, 1.f
+        );
+        mvp_matrix = mvp_matrix.transpose();
+
+        memcpy(uniform_data.data(), &mvp_matrix, sizeof(float) * 16);
+        
         uniform_buffer->write(reinterpret_cast<uint8_t*>(uniform_data.data()));
 
         logger::debug() << "Rendering...\n";
-        matrix::Vector4F vec;
-        vec.x() = 0.f;
-        vec.y() = 0.f;
-        vec.z() = 0.f;
-        vec.w() = 1.f;
         renderer->render({
             .instance_groups = { instance_group },
-            .clear_color = vec,
+            .clear_color = matrix::Vector4F{{ 0., 0., 0., 1. }},
         });
         logger::debug() << "Finished rendering !\n";
         auto elapsed = std::chrono::high_resolution_clock::now() - last_t;

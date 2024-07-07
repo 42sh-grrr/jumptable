@@ -22,6 +22,9 @@ namespace saltus::vulkan
         const std::shared_ptr<VulkanRenderTarget> &render_target() const;
 
         RendererPresentMode current_present_mode() const override;
+        virtual void target_present_mode(RendererPresentMode) override;
+
+        virtual matrix::Vector2<uint32_t> framebuffer_size() const override;
 
         void render(RenderInfo info) override;
         void wait_for_idle() override;

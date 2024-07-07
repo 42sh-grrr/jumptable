@@ -43,4 +43,9 @@ namespace saltus
     {
         return target_present_mode_;
     }
+
+    void Renderer::target_present_mode(RendererPresentMode nm)
+    {
+        target_present_mode_ = nm;
+    }
 } // namespace saltus
