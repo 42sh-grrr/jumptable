@@ -64,8 +64,7 @@ void render_thread_fn(
     SharedData *shared_data
 ) {
     logger::info() << "Loading model...\n";
-    // auto model = saltus::obj::load_obj("./test.obj");
-    // auto model = saltus::obj::load_obj("./lion.obj");
+    // auto model = saltus::obj::load_obj("assets/cube.obj");
     auto model = saltus::obj::load_obj("assets/sponza/sponzaobj.obj");
     logger::info() << "Model loaded !\n";
 
@@ -135,10 +134,16 @@ void render_thread_fn(
 
     for (auto &object : model.objects)
     {
-        logger::info() << "Loading object '" << object.name.value_or("") << "', " << object.positions.size() << " vertices\n";
         saltus::MeshCreateInfo mesh_info{};
         mesh_info.primitive_topology = saltus::PritmitiveTopology::TriangleList;
-        mesh_info.vertex_count = object.positions.size();
+        mesh_info.vertex_count = object.indices.size();
+        mesh_info.index_buffer = renderer->create_buffer({
+            .usages = saltus::BufferUsages{}.with_index(),
+            .access_hint = saltus::BufferAccessHint::Static,
+            .size = object.indices.size() * sizeof(uint32_t),
+            .data = reinterpret_cast<uint8_t*>(object.indices.data()),
+        });
+        mesh_info.index_format = saltus::MeshIndexFormat::UInt32;
         mesh_info.vertex_attributes.push_back({
             .name = "position",
             .type = saltus::VertexAttributeType::Vec4f,
@@ -266,8 +271,8 @@ int main()
     logger::info() << "Creating renderer...\n";
     auto renderer = saltus::Renderer::create({
         .window = window,
-        .target_present_mode = saltus::RendererPresentMode::VSync,
-        // .target_present_mode = saltus::RendererPresentMode::Immediate,
+        // .target_present_mode = saltus::RendererPresentMode::VSync,
+        .target_present_mode = saltus::RendererPresentMode::Immediate,
     });
     logger::info() << "Renderer presentaition mode: " << renderer->current_present_mode() << "\n";
     logger::info() << "Creating rendering data...\n";

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
@@ -28,6 +29,8 @@ namespace saltus::obj
         std::vector<matrix::Vector3F> texture_coordinates;
         std::vector<matrix::Vector3F> normals;
         std::vector<matrix::Vector3F> colors;
+
+        std::vector<uint32_t> indices;
 
         std::optional<size_t> material_index;
     };

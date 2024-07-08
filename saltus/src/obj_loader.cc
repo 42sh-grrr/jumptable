@@ -8,6 +8,47 @@
 
 namespace saltus::obj
 {
+    struct IndexGroup
+    {
+        IndexGroup(std::array<std::optional<uint32_t>, 3> arr):
+            IndexGroup(arr[0], arr[1], arr[2])
+        { }
+
+        IndexGroup(std::optional<uint32_t> a, std::optional<uint32_t> b, std::optional<uint32_t> c)
+        {
+            key = 0;
+            key <<= 32;
+            key |= a.value_or(~0);
+            key <<= 32;
+            key |= c.value_or(~0);
+            key <<= 32;
+            key |= b.value_or(~0);
+        }
+
+        bool operator ==(const IndexGroup &other) const
+        {
+            return other.key == key;
+        }
+
+        __uint128_t key;
+    };
+}
+
+namespace std
+{
+    template<>
+    struct hash<saltus::obj::IndexGroup>
+    {
+        size_t operator()(const saltus::obj::IndexGroup& s) const noexcept
+        {
+            size_t h1 = hash<__uint128_t>{}(s.key);
+            return h1; // or use boost::hash_combine
+        }
+    };
+}
+
+namespace saltus::obj
+{
     std::unordered_map<std::string, Material> load_mtl(std::string& filename)
     {
         std::unordered_map<std::string, Material> materials;
@@ -91,6 +132,8 @@ namespace saltus::obj
         LoadedObj result{};
         Object current_object{};
         std::unordered_map<std::string, size_t> material_map;
+
+        std::unordered_map<IndexGroup, uint32_t> temp_indices;
         std::vector<matrix::Vector4F> temp_positions;
         std::vector<matrix::Vector3F> temp_colors;
         std::vector<matrix::Vector3F> temp_texture_coords;
@@ -157,27 +200,45 @@ namespace saltus::obj
 
                     std::istringstream vertex_stream(vertex);
                     std::string index_str;
-                    std::array<std::optional<int>, 3> indices;
+                    std::array<std::optional<uint32_t>, 3> indices;
 
                     for (int i = 0; i < 3; ++i)
                     {
                         if (std::getline(vertex_stream, index_str, '/') && !index_str.empty())
-                            indices[i] = std::stoi(index_str) - 1;
+                        {
+                            int v = std::stoi(index_str) - 1;
+                            if (v < 0)
+                                throw std::runtime_error("Negative indices aren't supported");
+                            indices[i] = v;
+                        }
                     }
 
-                    current_object.positions
-                        .push_back(temp_positions.at(indices[0].value()));
-                    if (static_cast<int>(temp_colors.size()) > indices[0].value())
-                        current_object.colors
-                            .push_back(temp_colors.at(indices[0].value()));
+                    size_t index;
 
-                    if (indices[1].has_value())
-                        current_object.texture_coordinates
-                            .push_back(temp_texture_coords.at(indices[1].value()));
+                    IndexGroup group {indices};
+                    auto it = temp_indices.find(group);
+                    if (it == temp_indices.end())
+                    {
+                        index = current_object.positions.size();
+                        temp_indices.insert({ group, index });
 
-                    if (indices[2].has_value())
-                        current_object.normals
-                            .push_back(temp_normals.at(indices[2].value()));
+                        current_object.positions
+                            .push_back(temp_positions.at(indices[0].value()));
+                        if (temp_colors.size() > indices[0].value())
+                            current_object.colors
+                                .push_back(temp_colors.at(indices[0].value()));
+                        if (indices[1].has_value())
+                            current_object.texture_coordinates
+                                .push_back(temp_texture_coords.at(indices[1].value()));
+                        if (indices[2].has_value())
+                            current_object.normals
+                                .push_back(temp_normals.at(indices[2].value()));
+                    }
+                    else {
+                        index = it->second;
+                    }
+
+                    current_object.indices.push_back(index);
                 }
                 if (face_vertex_index != 3)
                     throw std::runtime_error("Obj file has non-triangle faces which isn't supported");

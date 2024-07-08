@@ -10,7 +10,9 @@ namespace saltus
         vertex_count_(info.vertex_count),
         vertex_attributes_(info.vertex_attributes),
         flip_faces_(info.flip_faces),
-        primitive_topology_(info.primitive_topology)
+        primitive_topology_(info.primitive_topology),
+        index_format_(info.index_format),
+        index_buffer_(info.index_buffer)
     {
         for (const auto &attr : info.vertex_attributes)
         {
@@ -40,5 +42,15 @@ namespace saltus
     PritmitiveTopology Mesh::primitive_topology() const
     {
         return primitive_topology_;
+    }
+
+    const MeshIndexFormat &Mesh::index_format() const
+    {
+        return index_format_;
+    }
+
+    const std::shared_ptr<Buffer> &Mesh::index_buffer() const
+    {
+        return index_buffer_;
     }
 } // namespace saltus

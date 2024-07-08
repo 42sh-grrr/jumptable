@@ -243,7 +243,21 @@ namespace saltus::vulkan
         scissor.extent = render_target_->swapchain_extent();
         vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 
-        vkCmdDraw(command_buffer, mesh_->vertex_count(), 1, 0, 0);
+        if (mesh_->index_buffer())
+        {
+            vkCmdBindIndexBuffer(
+                command_buffer, mesh_->index_buffer()->raw_buffer(),
+                0, mesh_->index_type()
+            );
+            vkCmdDrawIndexed(
+                command_buffer,
+                mesh_->vertex_count(), 1,
+                0, 0, 0
+            );
+        }
+        else {
+            vkCmdDraw(command_buffer, mesh_->vertex_count(), 1, 0, 0);
+        }
     }
 
     void VulkanInstanceGroup::create_pipeline_layout()
