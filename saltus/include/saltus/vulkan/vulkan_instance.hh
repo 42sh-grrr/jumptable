@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vulkan/vulkan_core.h>
+#include "saltus/vulkan/vulkan_renderer.hh"
+
 namespace saltus::vulkan
 {
     class VulkanInstance

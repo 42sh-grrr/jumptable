@@ -56,6 +56,8 @@ namespace saltus::vulkan
         VkCommandPool resettable_command_buffer_pool() const;
         VkCommandPool transient_command_buffer_pool() const;
 
+        uint32_t find_mem_type(uint32_t type_filter_, VkMemoryPropertyFlags properties);
+
     private:
         std::shared_ptr<VulkanInstance> instance_;
 

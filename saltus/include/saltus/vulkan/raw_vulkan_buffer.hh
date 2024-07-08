@@ -27,7 +27,5 @@ namespace saltus::vulkan
 
         VkBuffer buffer_ = VK_NULL_HANDLE;
         VkDeviceMemory memory_ = VK_NULL_HANDLE;
-
-        uint32_t find_mem_type(uint32_t type_filter_, VkMemoryPropertyFlags properties);
     };
 } // namespace saltus::vulkan

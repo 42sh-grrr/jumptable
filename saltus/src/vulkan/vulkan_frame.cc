@@ -146,29 +146,42 @@ namespace saltus::vulkan
         rendering_info.layerCount = 1;
 
         VkRenderingAttachmentInfo color_attachment { };
-        color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-        color_attachment.imageView = image_view;
-        color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        {
+            color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+            color_attachment.imageView = image_view;
+            color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        if (info.clear_color.has_value())
-            color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        else
-            color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        if (info.clear_color.has_value()) {
-            color_attachment.clearValue = VkClearValue {
-                .color = {.float32{
-                    info.clear_color.value().x(),
-                    info.clear_color.value().y(),
-                    info.clear_color.value().z(),
-                    info.clear_color.value().w(),
-                }},
-            };
+            color_attachment.loadOp = info.clear_color.has_value()
+                ? VK_ATTACHMENT_LOAD_OP_CLEAR
+                : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            if (info.clear_color.has_value()) {
+                color_attachment.clearValue = VkClearValue {
+                    .color = {.float32{
+                        info.clear_color.value().x(),
+                        info.clear_color.value().y(),
+                        info.clear_color.value().z(),
+                        info.clear_color.value().w(),
+                    }},
+                };
+            }
+        }
+        VkRenderingAttachmentInfo depth_attachment { };
+        {
+            const auto &depth_buffer = render_target_->depth_resource().get(frame_index_);
+
+            depth_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+            depth_attachment.imageView = depth_buffer.image_view()->view();
+            depth_attachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+
+            depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            depth_attachment.clearValue.depthStencil = { 1.f, 0 };
         }
 
-        VkRenderingAttachmentInfo attachments[] = { color_attachment };
         rendering_info.colorAttachmentCount = 1;
-        rendering_info.pColorAttachments = attachments;
+        rendering_info.pColorAttachments = &color_attachment;
+        rendering_info.pDepthAttachment = &depth_attachment;
 
         vkCmdBeginRendering(command_buffer_, &rendering_info);
         for (const auto &instance_group : info.instance_groups)

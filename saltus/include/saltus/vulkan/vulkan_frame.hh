@@ -1,6 +1,8 @@
 #pragma once
 
+#include <memory>
 #include <vulkan/vulkan_core.h>
+
 #include "saltus/renderer.hh"
 #include "saltus/vulkan/vulkan_render_target.hh"
 

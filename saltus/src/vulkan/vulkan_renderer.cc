@@ -17,6 +17,7 @@
 #include "saltus/vulkan/vulkan_mesh.hh"
 #include "saltus/vulkan/vulkan_render_target.hh"
 #include "saltus/vulkan/vulkan_instance_group.hh"
+#include "saltus/vulkan/frame_ring.hh"
 
 namespace saltus::vulkan
 {
@@ -27,14 +28,13 @@ namespace saltus::vulkan
 
     VulkanRenderer::VulkanRenderer(RendererCreateInfo info): Renderer(info)
     {
+        frame_ring_ = std::make_shared<FrameRing>(*this);
+
         instance_ = std::make_shared<VulkanInstance>();
         device_ = std::make_shared<VulkanDevice>(info.window, instance_);
-        render_target_ = std::make_shared<VulkanRenderTarget>(device_, info.target_present_mode);
+        render_target_ = std::make_shared<VulkanRenderTarget>(frame_ring_, device_, info.target_present_mode);
 
-        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-        {
-            frames_.emplace_back(render_target_, i);
-        }
+        frame_ring_->resize(MAX_FRAMES_IN_FLIGHT);
     }
 
     VulkanRenderer::~VulkanRenderer()
@@ -53,6 +53,11 @@ namespace saltus::vulkan
     const std::shared_ptr<VulkanRenderTarget> &VulkanRenderer::render_target() const
     {
         return render_target_;
+    }
+
+    const std::shared_ptr<FrameRing> &VulkanRenderer::frame_ring() const
+    {
+        return frame_ring_;
     }
 
     RendererPresentMode VulkanRenderer::current_present_mode() const
@@ -77,7 +82,7 @@ namespace saltus::vulkan
         render_target_->resize_if_changed();
 
         auto device = device_->device();
-        auto &frame = frames_.at(current_frame_);
+        auto &frame = frame_ring_->frame();
 
         vkWaitForFences(device, 1, &frame.in_flight_fence(), VK_TRUE, UINT64_MAX);
         uint32_t image_index =
@@ -134,7 +139,7 @@ namespace saltus::vulkan
         else if (result != VK_SUCCESS)
             throw std::runtime_error("Could not present to queue");
 
-        current_frame_ = (current_frame_+1) % frames_.size();
+        frame_ring_->next_frame();
     }
 
     void VulkanRenderer::wait_for_idle()

@@ -281,15 +281,15 @@ namespace saltus::vulkan
             frag_shader_stage_info
         };
 
-        VkDynamicState dynamic_states[] = {
+        std::array dynamic_states = {
             VK_DYNAMIC_STATE_VIEWPORT,
             VK_DYNAMIC_STATE_SCISSOR,
         };
 
         VkPipelineDynamicStateCreateInfo dynamic_state{};
         dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        dynamic_state.dynamicStateCount = sizeof(dynamic_states) / sizeof(*dynamic_states);
-        dynamic_state.pDynamicStates = dynamic_states;
+        dynamic_state.dynamicStateCount = dynamic_states.size();
+        dynamic_state.pDynamicStates = dynamic_states.data();
 
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
         vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -412,11 +412,20 @@ namespace saltus::vulkan
 
         VkPipelineRenderingCreateInfoKHR pipeline_create{};
         pipeline_create.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
-        pipeline_create.colorAttachmentCount    = 1;
+        pipeline_create.colorAttachmentCount = 1;
         pipeline_create.pColorAttachmentFormats = &render_target_->swapchain_image_format();
-        // TODO: Depth buffer
-        // pipeline_create.depthAttachmentFormat   = render_target_->swapchain_image_format();
-        // pipeline_create.stencilAttachmentFormat = render_target_->swapchain_image_format();
+        pipeline_create.depthAttachmentFormat = render_target_->depth_format();
+
+        VkPipelineDepthStencilStateCreateInfo depth_stencil{};
+        depth_stencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depth_stencil.depthTestEnable = VK_TRUE;
+        depth_stencil.depthWriteEnable = VK_TRUE;
+        depth_stencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+        depth_stencil.depthBoundsTestEnable = VK_TRUE;
+        depth_stencil.stencilTestEnable = VK_FALSE;
+        depth_stencil.stencilTestEnable = VK_FALSE;
+        depth_stencil.minDepthBounds = 0.f;
+        depth_stencil.maxDepthBounds = 1.f;
 
         VkGraphicsPipelineCreateInfo pipeline_info{};
         pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -428,9 +437,10 @@ namespace saltus::vulkan
         pipeline_info.pViewportState = &viewport_state;
         pipeline_info.pRasterizationState = &rasterizer;
         pipeline_info.pMultisampleState = &multisampling;
-        pipeline_info.pDepthStencilState = nullptr;
+        pipeline_info.pDepthStencilState = &depth_stencil;
         pipeline_info.pColorBlendState = &colorBlending;
         pipeline_info.pDynamicState = &dynamic_state;
+        pipeline_info.pDepthStencilState = &depth_stencil;
 
         pipeline_info.layout = pipeline_layout_;
         pipeline_info.renderPass = nullptr;

@@ -238,6 +238,26 @@ namespace saltus::vulkan
         return transient_command_buffer_pool_;
     }
 
+    uint32_t VulkanDevice::find_mem_type(
+        uint32_t type_filter,
+        VkMemoryPropertyFlags properties
+    ) {
+        VkPhysicalDeviceMemoryProperties mem_properties;
+        vkGetPhysicalDeviceMemoryProperties(physical_device_, &mem_properties);
+
+        for (uint32_t i = 0; i < mem_properties.memoryTypeCount; i++)
+        {
+            if (
+                (type_filter & (1<<i)) &&
+                (mem_properties.memoryTypes[i].propertyFlags & properties) == properties
+            ) {
+                return i;
+            }
+        }
+
+        throw std::runtime_error("Could not find suitable heap type");
+    }
+
     bool VulkanDevice::is_physical_device_suitable(VkPhysicalDevice physical_device)
     {
         // Check for complete queue families support

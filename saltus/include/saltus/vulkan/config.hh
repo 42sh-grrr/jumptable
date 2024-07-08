@@ -1,3 +1,5 @@
+#pragma once
+
 /** Constants that configures the vulkan renderer and other classes
  */
 

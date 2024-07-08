@@ -2,11 +2,16 @@
 
 #include <algorithm>
 #include <limits>
+#include <memory>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vk_enum_string_helper.h>
 #include <logger/level.hh>
+
 #include "saltus/renderer.hh"
+#include "saltus/vulkan/frame_ring.hh"
+#include "saltus/vulkan/raw_vulkan_image.hh"
+#include "saltus/vulkan/raw_vulkan_image_view.hh"
 
 namespace saltus::vulkan
 {
@@ -46,10 +51,58 @@ namespace saltus::vulkan
         throw std::runtime_error("Unknown present mode");
     }
 
+    VulkanRenderTarget::DepthBuffer::DepthBuffer(
+        std::shared_ptr<VulkanRenderTarget> render_target, uint32_t
+    ): render_target_(render_target) {
+        VkFormat format = render_target->depth_format();
+
+        auto extent = render_target->swapchain_extent();
+        image_ = std::make_shared<RawVulkanImage>(
+            RawVulkanImage::Builder(render_target->device())
+                .with_format(format)
+                .with_usage(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+                .with_size(extent.width, extent.height)
+        );
+
+        image_view_ = std::make_shared<RawVulkanImageView>(
+            image_,
+            format,
+            VK_IMAGE_VIEW_TYPE_2D,
+            VK_IMAGE_ASPECT_DEPTH_BIT
+        );
+    }
+
+    VulkanRenderTarget::DepthBuffer::~DepthBuffer() = default;
+
+    const std::shared_ptr<VulkanRenderTarget> &VulkanRenderTarget::DepthBuffer::render_target() const
+    {
+        return render_target_;
+    }
+   
+    const std::shared_ptr<RawVulkanImage> &VulkanRenderTarget::DepthBuffer::image() const
+    {
+        return image_;
+    }
+
+    const std::shared_ptr<RawVulkanImageView> &VulkanRenderTarget::DepthBuffer::image_view() const
+    {
+        return image_view_;
+    }
+
     VulkanRenderTarget::VulkanRenderTarget(
+        std::shared_ptr<FrameRing> frame_ring,
         std::shared_ptr<VulkanDevice> device,
         RendererPresentMode target_present_mode
-    ): device_(device), target_present_mode_(target_present_mode) {
+    ):
+        frame_ring_(frame_ring),
+        device_(device),
+        target_present_mode_(target_present_mode),
+        depth_resource_(frame_ring->allocate_resource<DepthBuffer>(
+            [this](uint32_t fi){
+                return std::make_unique<DepthBuffer>(this->shared_from_this(), fi);
+            }
+        ))
+    {
         create();
     }
 
@@ -97,6 +150,15 @@ namespace saltus::vulkan
     const std::vector<VkImageView> &VulkanRenderTarget::swapchain_image_views() const
     {
         return swapchain_image_views_;
+    }
+
+    const VkFormat &VulkanRenderTarget::depth_format() const
+    {
+        return depth_format_;
+    }
+    const FrameResource<VulkanRenderTarget::DepthBuffer> &VulkanRenderTarget::depth_resource() const
+    {
+        return depth_resource_;
     }
 
     void VulkanRenderTarget::resize_if_changed()
@@ -177,6 +239,9 @@ namespace saltus::vulkan
         create_swap_chain();
         create_images();
         create_image_views();
+
+        // TODO: Choose an otherone if not available
+        depth_format_ = VK_FORMAT_D32_SFLOAT;
     }
 
     uint32_t VulkanRenderTarget::acquire_next_image(
@@ -312,6 +377,8 @@ namespace saltus::vulkan
         destroy_swap_chain();
         swapchain_images_.clear();
         swapchain_ = VK_NULL_HANDLE;
+
+        depth_resource_.clear();
     }
 
     void VulkanRenderTarget::destroy_swap_chain()

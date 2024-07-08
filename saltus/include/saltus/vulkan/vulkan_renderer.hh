@@ -1,16 +1,16 @@
 #pragma once
 
 #include "saltus/renderer.hh"
-#include "saltus/vulkan/vulkan_device.hh"
-#include "saltus/vulkan/vulkan_frame.hh"
-#include "saltus/vulkan/vulkan_instance.hh"
-#include "saltus/vulkan/vulkan_render_target.hh"
 
-#include <vector>
 #include <vulkan/vulkan_core.h>
 
 namespace saltus::vulkan
 {
+    class VulkanInstance;
+    class VulkanDevice;
+    class VulkanRenderTarget;
+    class FrameRing;
+
     class VulkanRenderer: public Renderer
     {
     public:
@@ -20,6 +20,7 @@ namespace saltus::vulkan
         const std::shared_ptr<VulkanInstance> &instance() const;
         const std::shared_ptr<VulkanDevice> &device() const;
         const std::shared_ptr<VulkanRenderTarget> &render_target() const;
+        const std::shared_ptr<FrameRing> &frame_ring() const;
 
         RendererPresentMode current_present_mode() const override;
         virtual void target_present_mode(RendererPresentMode) override;
@@ -41,8 +42,6 @@ namespace saltus::vulkan
         std::shared_ptr<VulkanInstance> instance_;
         std::shared_ptr<VulkanDevice> device_;
         std::shared_ptr<VulkanRenderTarget> render_target_;
-
-        int current_frame_ = 0;
-        std::vector<VulkanFrame> frames_;
+        std::shared_ptr<FrameRing> frame_ring_;
     };
 } // namespace saltus::vulkan

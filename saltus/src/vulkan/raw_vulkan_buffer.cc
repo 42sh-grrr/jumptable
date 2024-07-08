@@ -62,7 +62,7 @@ namespace saltus::vulkan
         VkMemoryAllocateInfo alloc_info{};
         alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         alloc_info.allocationSize = mem_reqs.size;
-        alloc_info.memoryTypeIndex = find_mem_type(
+        alloc_info.memoryTypeIndex = device_->find_mem_type(
             mem_reqs.memoryTypeBits,
             memory_properties
         );
@@ -94,25 +94,5 @@ namespace saltus::vulkan
             throw std::runtime_error("Cannot unmap non allocated buffer");
 
         vkUnmapMemory(*device_, memory_);
-    }
-
-    uint32_t RawVulkanBuffer::find_mem_type(
-        uint32_t type_filter,
-        VkMemoryPropertyFlags properties
-    ) {
-        VkPhysicalDeviceMemoryProperties mem_properties;
-        vkGetPhysicalDeviceMemoryProperties(device_->physical_device(), &mem_properties);
-
-        for (uint32_t i = 0; i < mem_properties.memoryTypeCount; i++)
-        {
-            if (
-                (type_filter & (1<<i)) &&
-                (mem_properties.memoryTypes[i].propertyFlags & properties) == properties
-            ) {
-                return i;
-            }
-        }
-
-        throw std::runtime_error("Could not find suitable heap type");
     }
 } // namespace saltus::vulkan
