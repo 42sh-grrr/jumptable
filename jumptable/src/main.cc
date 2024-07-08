@@ -21,6 +21,7 @@
 #include <variant>
 #include "math/transformation.hh"
 #include "quick_event_queue.hh"
+#include "saltus/instance_group.hh"
 #include "saltus/obj_loader.hh"
 
 static std::vector<char> read_full_file(const std::string& filename)
@@ -64,10 +65,9 @@ void render_thread_fn(
 ) {
     logger::info() << "Loading model...\n";
     // auto model = saltus::obj::load_obj("./test.obj");
-    auto model = saltus::obj::load_obj("./lion.obj");
-    auto object = model.objects.at(0);
+    // auto model = saltus::obj::load_obj("./lion.obj");
+    auto model = saltus::obj::load_obj("assets/sponza/sponzaobj.obj");
     logger::info() << "Model loaded !\n";
-    logger::info() << "Vertex count: " << object.positions.size() << "\n";
 
     auto receiver = shared_data->events.subscribe();
 
@@ -102,40 +102,7 @@ void render_thread_fn(
 
     bind_group->set_binding(0, uniform_buffer);
 
-    saltus::MeshCreateInfo mesh_info{};
-    mesh_info.primitive_topology = saltus::PritmitiveTopology::TriangleList;
-    mesh_info.vertex_count = object.positions.size();
-    mesh_info.vertex_attributes.push_back({
-        .name = "position",
-        .type = saltus::VertexAttributeType::Vec4f,
-        .buffer = renderer->create_buffer({
-            .usages = saltus::BufferUsages{}.with_vertex(),
-            .access_hint = saltus::BufferAccessHint::Static,
-            .size = object.positions.size() * sizeof(float) * 4,
-            .data = reinterpret_cast<uint8_t*>(object.positions.data()),
-        }),
-    });
-    mesh_info.vertex_attributes.push_back({
-        .name = "color",
-        .type = saltus::VertexAttributeType::Vec3f,
-        .buffer = renderer->create_buffer({
-            .usages = saltus::BufferUsages{}.with_vertex(),
-            .access_hint = saltus::BufferAccessHint::Static,
-            .size = object.positions.size() * sizeof(float) * 3,
-            .data = reinterpret_cast<uint8_t*>(object.colors.data()),
-        }),
-    });
-    mesh_info.vertex_attributes.push_back({
-        .name = "normal",
-        .type = saltus::VertexAttributeType::Vec3f,
-        .buffer = renderer->create_buffer({
-            .usages = saltus::BufferUsages{}.with_vertex(),
-            .access_hint = saltus::BufferAccessHint::Static,
-            .size = object.normals.size() * sizeof(float) * 3,
-            .data = reinterpret_cast<uint8_t*>(object.normals.data()),
-        }),
-    });
-    auto mesh = renderer->create_mesh(mesh_info);
+    std::vector<std::shared_ptr<saltus::InstanceGroup>> instance_groups;
 
     saltus::MaterialCreateInfo material_info{};
     material_info.bind_group_layouts.push_back(bind_group_layout);
@@ -166,11 +133,50 @@ void render_thread_fn(
     });
     auto material = renderer->create_material(material_info);
 
-    auto instance_group = renderer->create_instance_group({
-        .material = material,
-        .mesh = mesh,
-        .bind_groups = { bind_group }
-    });
+    for (auto &object : model.objects)
+    {
+        logger::info() << "Loading object '" << object.name.value_or("") << "', " << object.positions.size() << " vertices\n";
+        saltus::MeshCreateInfo mesh_info{};
+        mesh_info.primitive_topology = saltus::PritmitiveTopology::TriangleList;
+        mesh_info.vertex_count = object.positions.size();
+        mesh_info.vertex_attributes.push_back({
+            .name = "position",
+            .type = saltus::VertexAttributeType::Vec4f,
+            .buffer = renderer->create_buffer({
+                .usages = saltus::BufferUsages{}.with_vertex(),
+                .access_hint = saltus::BufferAccessHint::Static,
+                .size = object.positions.size() * sizeof(float) * 4,
+                .data = reinterpret_cast<uint8_t*>(object.positions.data()),
+            }),
+        });
+        mesh_info.vertex_attributes.push_back({
+            .name = "color",
+            .type = saltus::VertexAttributeType::Vec3f,
+            .buffer = renderer->create_buffer({
+                .usages = saltus::BufferUsages{}.with_vertex(),
+                .access_hint = saltus::BufferAccessHint::Static,
+                .size = object.positions.size() * sizeof(float) * 3,
+                .data = reinterpret_cast<uint8_t*>(object.colors.data()),
+            }),
+        });
+        mesh_info.vertex_attributes.push_back({
+            .name = "normal",
+            .type = saltus::VertexAttributeType::Vec3f,
+            .buffer = renderer->create_buffer({
+                .usages = saltus::BufferUsages{}.with_vertex(),
+                .access_hint = saltus::BufferAccessHint::Static,
+                .size = object.normals.size() * sizeof(float) * 3,
+                .data = reinterpret_cast<uint8_t*>(object.normals.data()),
+            }),
+        });
+        auto mesh = renderer->create_mesh(mesh_info);
+
+        instance_groups.push_back(renderer->create_instance_group({
+            .material = material,
+            .mesh = mesh,
+            .bind_groups = { bind_group }
+        }));
+    }
 
     matrix::Matrix4F mvp_matrix;
 
@@ -189,7 +195,7 @@ void render_thread_fn(
             ar, 0.001f, 100.f, std::numbers::pi_v<float> / 2.f
         );
         mvp_matrix *= math::transformation::translate3D(
-            0.f, -0.5f, 10.f
+            0.f, 0.5f, 0.f
         );
         mvp_matrix *= math::transformation::rotate3Dy(time);
         mvp_matrix *= math::transformation::scale3D(
@@ -203,7 +209,7 @@ void render_thread_fn(
 
         logger::debug() << "Rendering...\n";
         renderer->render({
-            .instance_groups = { instance_group },
+            .instance_groups = instance_groups,
             .clear_color = matrix::Vector4F{{ 0., 0., 0., 1. }},
         });
         logger::debug() << "Finished rendering !\n";
