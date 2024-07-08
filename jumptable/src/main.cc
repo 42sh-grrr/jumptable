@@ -22,7 +22,7 @@
 #include "math/transformation.hh"
 #include "quick_event_queue.hh"
 #include "saltus/instance_group.hh"
-#include "saltus/obj_loader.hh"
+#include "saltus/loaders/obj_loader.hh"
 
 static std::vector<char> read_full_file(const std::string& filename)
 {
@@ -65,7 +65,7 @@ void render_thread_fn(
 ) {
     logger::info() << "Loading model...\n";
     // auto model = saltus::obj::load_obj("assets/cube.obj");
-    auto model = saltus::obj::load_obj("assets/sponza/sponzaobj.obj");
+    auto model = saltus::loaders::obj::load_obj("assets/sponza/sponzaobj.obj");
     logger::info() << "Model loaded !\n";
 
     auto receiver = shared_data->events.subscribe();

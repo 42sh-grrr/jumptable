@@ -6,7 +6,7 @@
 #include <vector>
 #include <matrix/vector.hh>
 
-namespace saltus::obj
+namespace saltus::loaders::obj
 {
     struct Material
     {

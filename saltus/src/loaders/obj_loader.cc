@@ -1,4 +1,4 @@
-#include "saltus/loaders/obj_loader.hh"
+#include "saltus/obj_loader.hh"
 
 #include <filesystem>
 #include <iostream>
