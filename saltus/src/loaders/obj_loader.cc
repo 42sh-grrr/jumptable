@@ -87,7 +87,9 @@ namespace saltus::loaders::obj
             }
             else if (token == "map_Kd")
             {
-                iss >> current_material.diffuse_map;
+                std::string raw_map;
+                iss >> raw_map;
+                current_material.diffuse_map = std::filesystem::path(filename).parent_path() / raw_map;
             }
             else if (token == "Ks")
             {

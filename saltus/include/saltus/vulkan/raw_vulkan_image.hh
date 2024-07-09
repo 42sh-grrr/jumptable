@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan_core.h>
+#include "saltus/vulkan/raw_vulkan_buffer.hh"
 #include "saltus/vulkan/vulkan_device.hh"
 
 namespace saltus::vulkan
@@ -35,6 +36,34 @@ namespace saltus::vulkan
             std::unique_ptr<RawVulkanImage> build();
         };
 
+        struct BarrierBuilder
+        {
+            VkImageMemoryBarrier image_mem_barrier{};
+
+            VkPipelineStageFlags src_stage_mask;
+            VkPipelineStageFlags dst_stage_mask;
+
+            BarrierBuilder(RawVulkanImage &);
+            BarrierBuilder(VkImage);
+
+            BarrierBuilder &with_old_layout(VkImageLayout);
+            BarrierBuilder &with_new_layout(VkImageLayout);
+
+            BarrierBuilder &with_src_access_mask(VkAccessFlags);
+            BarrierBuilder &with_dst_access_mask(VkAccessFlags);
+
+            BarrierBuilder &with_aspect_mask(VkImageAspectFlags);
+            BarrierBuilder &with_base_mip_level(uint32_t);
+            BarrierBuilder &with_level_count(uint32_t);
+            BarrierBuilder &with_base_array_layer(uint32_t);
+            BarrierBuilder &with_layer_count(uint32_t);
+
+            BarrierBuilder &with_src_stage_mask(VkPipelineStageFlags);
+            BarrierBuilder &with_dst_stage_mask(VkPipelineStageFlags);
+
+            void build(VkCommandBuffer buffer);
+        };
+
         RawVulkanImage(const Builder &);
         ~RawVulkanImage();
 
@@ -51,6 +80,9 @@ namespace saltus::vulkan
 
         const VkImage &image() const;
         const VkDeviceMemory &image_memory() const;
+
+        void write(uint8_t *data, size_t size);
+        void write(const RawVulkanBuffer &buffer);
 
     private:
         std::shared_ptr<VulkanDevice> device_;

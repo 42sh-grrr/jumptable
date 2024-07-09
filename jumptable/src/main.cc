@@ -12,6 +12,7 @@
 #include <saltus/window_events.hh>
 #include <saltus/renderer.hh>
 #include <saltus/material.hh>
+#include <stdexcept>
 #include <thread>
 #include <unistd.h>
 #include <logger/logger.hh>
@@ -23,8 +24,10 @@
 #include <variant>
 #include "math/transformation.hh"
 #include "quick_event_queue.hh"
+#include "saltus/image.hh"
 #include "saltus/instance_group.hh"
 #include "saltus/loaders/obj_loader.hh"
+#include "saltus/loaders/tga_loader.hh"
 
 static std::vector<char> read_full_file(const std::string& filename)
 {
@@ -62,9 +65,42 @@ struct SharedData
 };
 
 std::shared_ptr<saltus::Mesh>
-obj_object_to_mesh(saltus::Renderer *renderer, saltus::loaders::obj::Object object)
-{
+obj_object_to_mesh(
+    saltus::Renderer *renderer,
+    saltus::loaders::obj::Object &object,
+    saltus::loaders::obj::Material &material
+) {
     size_t vertex_count = object.indices.size();
+
+    logger::info() << "Loading texture " << material.diffuse_map << "\n";
+    auto tgaimage =
+        saltus::loaders::tga::load_tga_image(material.diffuse_map);
+
+    std::vector<uint8_t> new_pixels;
+    new_pixels.resize(tgaimage.width*tgaimage.height*4);
+    for (size_t i = 0; i < tgaimage.width*tgaimage.height; i++)
+    {
+        for (size_t j = 0; j < 4; j++)
+        {
+            new_pixels[i * 4 + j] = 255;
+        }
+        for (size_t j = 0; j < tgaimage.bytesPerPixel; j++)
+        {
+            new_pixels[i * 4 + j] =
+                tgaimage.data[i * tgaimage.bytesPerPixel + j];
+        }
+    }
+    auto image = renderer->create_image({
+        .width = tgaimage.width,
+        .height = tgaimage.height,
+        .usages = saltus::ImageUsages{}.with_sampled(),
+        .format = {
+            .pixel_format = saltus::ImagePixelFormat::RGBA,
+            .data_type = saltus::ImageDataType::srgb8,
+        },
+        .initial_data = new_pixels.data(),
+    });
+    logger::info() << "Loaded! " << tgaimage.width << "x" << tgaimage.height << "\n";
 
     if (object.colors.empty())
     {
@@ -234,7 +270,9 @@ void render_thread_fn(
 
     for (auto &object : model.objects)
     {
-        auto mesh = obj_object_to_mesh(renderer, object);
+        auto mesh = obj_object_to_mesh(
+            renderer, object, model.materials.at(object.material_index.value())
+        );
         instance_groups.push_back(renderer->create_instance_group({
             .material = material,
             .mesh = mesh,
@@ -259,7 +297,7 @@ void render_thread_fn(
             ar, 0.001f, 100.f, std::numbers::pi_v<float> / 2.f
         );
         mvp_matrix *= math::transformation::translate3D(
-            0.f, 0.5f, 7.5f
+            0.f, 0.f, 0.4f
         );
         mvp_matrix *= math::transformation::rotate3Dy(time);
         mvp_matrix *= math::transformation::scale3D(

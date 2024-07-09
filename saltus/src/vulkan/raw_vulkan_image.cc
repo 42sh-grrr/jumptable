@@ -1,5 +1,9 @@
 #include "saltus/vulkan/raw_vulkan_image.hh"
+#include <cstring>
 #include <vulkan/vulkan_core.h>
+#include "saltus/vulkan/raw_command_buffer.hh"
+#include "saltus/vulkan/raw_vulkan_buffer.hh"
+#include "saltus/vulkan/raw_vulkan_fence.hh"
 
 namespace saltus::vulkan
 {
@@ -52,6 +56,91 @@ namespace saltus::vulkan
     std::unique_ptr<RawVulkanImage> RawVulkanImage::Builder::build()
     {
         return std::make_unique<RawVulkanImage>(*this);
+    }
+
+    using BB = RawVulkanImage::BarrierBuilder;
+
+    BB::BarrierBuilder(RawVulkanImage &img): BarrierBuilder(img.image())
+    {
+        
+    }
+    BB::BarrierBuilder(VkImage img)
+    {
+        image_mem_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        image_mem_barrier.image = img;
+        image_mem_barrier.subresourceRange.layerCount = 1;
+        image_mem_barrier.subresourceRange.levelCount = 1;
+    }
+
+    BB &BB::with_old_layout(VkImageLayout val)
+    {
+        image_mem_barrier.oldLayout = val;
+        return *this;
+    }
+    BB &BB::with_new_layout(VkImageLayout val)
+    {
+        image_mem_barrier.newLayout = val;
+        return *this;
+    }
+
+    BB &BB::with_src_access_mask(VkAccessFlags val)
+    {
+        image_mem_barrier.srcAccessMask = val;
+        return *this;
+    }
+    BB &BB::with_dst_access_mask(VkAccessFlags val)
+    {
+        image_mem_barrier.dstAccessMask = val;
+        return *this;
+    }
+
+    BB &BB::with_aspect_mask(VkImageAspectFlags val)
+    {
+        image_mem_barrier.subresourceRange.aspectMask = val;
+        return *this;
+    }
+    BB &BB::with_base_mip_level(uint32_t val)
+    {
+        image_mem_barrier.subresourceRange.baseMipLevel = val;
+        return *this;
+    }
+    BB &BB::with_level_count(uint32_t val)
+    {
+        image_mem_barrier.subresourceRange.levelCount = val;
+        return *this;
+    }
+    BB &BB::with_base_array_layer(uint32_t val)
+    {
+        image_mem_barrier.subresourceRange.baseArrayLayer = val;
+        return *this;
+    }
+    BB &BB::with_layer_count(uint32_t val)
+    {
+        image_mem_barrier.subresourceRange.levelCount = val;
+        return *this;
+    }
+
+    BB &BB::with_src_stage_mask(VkPipelineStageFlags val)
+    {
+        src_stage_mask = val;
+        return *this;
+    }
+    BB &BB::with_dst_stage_mask(VkPipelineStageFlags val)
+    {
+        dst_stage_mask = val;
+        return *this;
+    }
+
+    void BB::build(VkCommandBuffer buffer)
+    {
+        vkCmdPipelineBarrier(
+            buffer,
+            src_stage_mask, dst_stage_mask,
+            0,
+            0, nullptr,
+            0, nullptr,
+            1, &image_mem_barrier
+        );
     }
 
     RawVulkanImage::RawVulkanImage(const Builder &builder):
@@ -137,5 +226,70 @@ namespace saltus::vulkan
     const VkDeviceMemory &RawVulkanImage::image_memory() const
     {
         return image_memory_;
+    }
+
+    void RawVulkanImage::write(uint8_t *data, size_t size)
+    {
+        RawVulkanBuffer buffer(device_, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+        buffer.alloc(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        void *buf = buffer.map(0, VK_WHOLE_SIZE);
+        memcpy(buf, data, size);
+        buffer.unmap();
+        write(buffer);
+    }
+
+    void RawVulkanImage::write(const RawVulkanBuffer &buffer)
+    {
+        RawCommandBuffer rcb(device_);
+        
+        rcb.begin();
+
+        RawVulkanImage::BarrierBuilder(*this)
+            .with_old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+            .with_new_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+            .with_src_access_mask(0)
+            .with_dst_access_mask(VK_ACCESS_TRANSFER_WRITE_BIT)
+            .with_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+            .with_src_stage_mask(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)
+            .with_dst_stage_mask(VK_PIPELINE_STAGE_TRANSFER_BIT)
+            .build(rcb.handle());
+
+        VkBufferImageCopy region{};
+        region.bufferOffset = 0;
+        region.bufferRowLength = 0;
+        region.bufferImageHeight = 0;
+
+        region.imageSubresource = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        };
+
+        region.imageOffset = { 0, 0, 0 };
+        region.imageExtent = { size_.x(), size_.y(), size_.z() };
+
+        vkCmdCopyBufferToImage(
+            rcb.handle(),
+            buffer,
+            image_,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1,
+            &region
+        );
+
+        RawVulkanImage::BarrierBuilder{*this}
+            .with_old_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+            .with_new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+            .with_src_access_mask(VK_ACCESS_TRANSFER_WRITE_BIT)
+            .with_dst_access_mask(VK_ACCESS_SHADER_READ_BIT)
+            .with_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
+            .with_src_stage_mask(VK_PIPELINE_STAGE_TRANSFER_BIT)
+            .with_dst_stage_mask(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
+            .build(rcb.handle());
+
+        RawVulkanFence fence(device_);
+        rcb.end_and_submit(device_->graphics_queue(), &fence);
+        fence.wait();
     }
 } // namespace saltus::vulkan

@@ -40,6 +40,7 @@ namespace saltus
         VertexAttributeDataType scalar_type;
         VertexAttributeFormat format;
 
+        static VertexAttributeType Float;
         static VertexAttributeType Vec2f;
         static VertexAttributeType Vec3f;
         static VertexAttributeType Vec4f;

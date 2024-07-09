@@ -1,5 +1,6 @@
 #pragma once
 
+#include "saltus/image.hh"
 #include "saltus/renderer.hh"
 
 #include <vulkan/vulkan_core.h>
@@ -31,6 +32,7 @@ namespace saltus::vulkan
         void wait_for_idle() override;
 
         std::shared_ptr<Buffer> create_buffer(BufferCreateInfo) override;
+        std::shared_ptr<Image> create_image(ImageCreateInfo) override;
         std::shared_ptr<Shader> create_shader(ShaderCreateInfo info) override;
         std::shared_ptr<Material> create_material(MaterialCreateInfo) override;
         std::shared_ptr<Mesh> create_mesh(MeshCreateInfo) override;

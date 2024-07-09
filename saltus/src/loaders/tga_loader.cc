@@ -80,7 +80,6 @@ namespace saltus::loaders::tga
         TgaImage image;
         image.width = header.width;
         image.height = header.height;
-        std::cout << "bpp: " << static_cast<int>(header.bits_per_pixel) << "\n";
         if ((header.bits_per_pixel % 8) != 0)
             throw std::runtime_error("Cand not read a TGA image with weird bits per pixel");
         image.bytesPerPixel = header.bits_per_pixel / 8;

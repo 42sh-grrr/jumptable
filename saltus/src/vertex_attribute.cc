@@ -3,6 +3,10 @@
 
 namespace saltus
 {
+    VertexAttributeType VertexAttributeType::Float {
+        .scalar_type = VertexAttributeDataType::f32,
+        .format = VertexAttributeFormat::Scalar,
+    };
     VertexAttributeType VertexAttributeType::Vec2f {
         .scalar_type = VertexAttributeDataType::f32,
         .format = VertexAttributeFormat::Vec2,

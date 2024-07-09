@@ -1,22 +1,22 @@
 # Blender 4.1.1 MTL File: 'None'
 # www.blender.org
 
-newmtl Material__25.001
+newmtl Material__25.003
 Ns 7.843135
 Ka 1.000000 1.000000 1.000000
 Ks 0.000000 0.000000 0.000000
 Ke 0.000000 0.000000 0.000000
 Ni 1.000000
-d 0.000000
+d 1.000000
 illum 1
 map_Kd lion.tga
 
-newmtl Material__298.001
+newmtl Material__298.002
 Ns 7.843135
 Ka 1.000000 1.000000 1.000000
 Ks 0.000000 0.000000 0.000000
 Ke 0.000000 0.000000 0.000000
 Ni 1.000000
-d 0.000000
+d 1.000000
 illum 1
-map_Kd lion_background.tga
+map_Kd background.tga

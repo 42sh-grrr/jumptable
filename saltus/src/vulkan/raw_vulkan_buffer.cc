@@ -7,7 +7,7 @@ namespace saltus::vulkan
         std::shared_ptr<VulkanDevice> device,
         VkDeviceSize size,
         VkBufferUsageFlags usage_flags
-    ): device_(device) {
+    ): device_(device), size_(size) {
         VkBufferCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         create_info.size = size;
@@ -39,6 +39,11 @@ namespace saltus::vulkan
         vkDestroyBuffer(*device_, buffer_, nullptr);
         if (memory_ != nullptr)
             vkFreeMemory(*device_, memory_, nullptr);
+    }
+
+    VkDeviceSize RawVulkanBuffer::size() const
+    {
+        return size_;
     }
 
     RawVulkanBuffer::operator VkBuffer() const

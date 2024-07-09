@@ -15,6 +15,8 @@ namespace saltus::vulkan
         );
         ~RawVulkanBuffer();
 
+        VkDeviceSize size() const;
+
         operator VkBuffer() const;
         VkBuffer buffer_handle() const;
 
@@ -24,6 +26,8 @@ namespace saltus::vulkan
 
     private:
         std::shared_ptr<VulkanDevice> device_;
+
+        VkDeviceSize size_;
 
         VkBuffer buffer_ = VK_NULL_HANDLE;
         VkDeviceMemory memory_ = VK_NULL_HANDLE;
