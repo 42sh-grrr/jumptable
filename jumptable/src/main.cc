@@ -1,9 +1,11 @@
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <iomanip>
 #include <iostream>
 #include <fstream>
 #include <chrono>
+#include <iterator>
 #include <matrix/matrix.hh>
 #include <numbers>
 #include <saltus/window.hh>
@@ -59,13 +61,106 @@ struct SharedData
     QuickEventQueue<QuickEvent> events;
 };
 
+std::shared_ptr<saltus::Mesh>
+obj_object_to_mesh(saltus::Renderer *renderer, saltus::loaders::obj::Object object)
+{
+    size_t vertex_count = object.indices.size();
+
+    if (object.colors.empty())
+    {
+        std::generate_n(
+            std::back_insert_iterator(object.colors),
+            vertex_count,
+            [](){ return matrix::Vector3F({ 1.f, 1.f, 1.f }); }
+        );
+    }
+    if (object.normals.empty())
+    {
+        std::generate_n(
+            std::back_insert_iterator(object.normals),
+            vertex_count,
+            [](){ return matrix::Vector3F({ 0.f, 0.f, 0.f }); }
+        );
+    }
+    std::vector<matrix::Vector2F> texcoords;
+    texcoords.reserve(object.texture_coordinates.size());
+    std::transform(
+        object.texture_coordinates.cbegin(), object.texture_coordinates.cend(),
+        std::back_insert_iterator<std::vector<matrix::Vector2F>>(texcoords),
+        [](matrix::Vector3F v) -> matrix::Vector2F {
+            return matrix::Vector2F({v.x(), v.y()});
+        }
+    );
+    if (texcoords.empty())
+    {
+        std::generate_n(
+            std::back_insert_iterator(texcoords),
+            vertex_count,
+            [](){ return matrix::Vector2F({ 0.f, 0.f }); }
+        );
+    }
+
+    saltus::MeshCreateInfo mesh_info{};
+    mesh_info.primitive_topology = saltus::PritmitiveTopology::TriangleList;
+    mesh_info.vertex_count = vertex_count;
+    mesh_info.index_buffer = renderer->create_buffer({
+        .usages = saltus::BufferUsages{}.with_index(),
+        .access_hint = saltus::BufferAccessHint::Static,
+        .size = object.indices.size() * sizeof(uint32_t),
+        .data = reinterpret_cast<uint8_t*>(object.indices.data()),
+    });
+    mesh_info.index_format = saltus::MeshIndexFormat::UInt32;
+    mesh_info.vertex_attributes.push_back({
+        .name = "position",
+        .type = saltus::VertexAttributeType::Vec4f,
+        .buffer = renderer->create_buffer({
+            .usages = saltus::BufferUsages{}.with_vertex(),
+            .access_hint = saltus::BufferAccessHint::Static,
+            .size = object.positions.size() * sizeof(float) * 4,
+            .data = reinterpret_cast<uint8_t*>(object.positions.data()),
+        }),
+    });
+    mesh_info.vertex_attributes.push_back({
+        .name = "color",
+        .type = saltus::VertexAttributeType::Vec3f,
+        .buffer = renderer->create_buffer({
+            .usages = saltus::BufferUsages{}.with_vertex(),
+            .access_hint = saltus::BufferAccessHint::Static,
+            .size = object.colors.size() * sizeof(float) * 3,
+            .data = reinterpret_cast<uint8_t*>(object.colors.data()),
+        }),
+    });
+    mesh_info.vertex_attributes.push_back({
+        .name = "normal",
+        .type = saltus::VertexAttributeType::Vec3f,
+        .buffer = renderer->create_buffer({
+            .usages = saltus::BufferUsages{}.with_vertex(),
+            .access_hint = saltus::BufferAccessHint::Static,
+            .size = object.normals.size() * sizeof(float) * 3,
+            .data = reinterpret_cast<uint8_t*>(object.normals.data()),
+        }),
+    });
+    mesh_info.vertex_attributes.push_back({
+        .name = "uvs",
+        .type = saltus::VertexAttributeType::Vec2f,
+        .buffer = renderer->create_buffer({
+            .usages = saltus::BufferUsages{}.with_vertex(),
+            .access_hint = saltus::BufferAccessHint::Static,
+            .size = texcoords.size() * sizeof(float) * 2,
+            .data = reinterpret_cast<uint8_t*>(texcoords.data()),
+        }),
+    });
+    return renderer->create_mesh(mesh_info);
+}
+
 void render_thread_fn(
     saltus::Renderer *renderer,
     SharedData *shared_data
 ) {
     logger::info() << "Loading model...\n";
     // auto model = saltus::obj::load_obj("assets/cube.obj");
-    auto model = saltus::loaders::obj::load_obj("assets/sponza/sponzaobj.obj");
+    // auto model = saltus::loaders::obj::load_obj("assets/sponza/sponzaobj.obj");
+    auto model = saltus::loaders::obj::load_obj("assets/lion.obj");
     logger::info() << "Model loaded !\n";
 
     auto receiver = shared_data->events.subscribe();
@@ -130,52 +225,16 @@ void render_thread_fn(
         .name = "normal",
         .type = saltus::VertexAttributeType::Vec3f,
     });
+    material_info.vertex_attributes.push_back({
+        .location = 3,
+        .name = "uvs",
+        .type = saltus::VertexAttributeType::Vec2f,
+    });
     auto material = renderer->create_material(material_info);
 
     for (auto &object : model.objects)
     {
-        saltus::MeshCreateInfo mesh_info{};
-        mesh_info.primitive_topology = saltus::PritmitiveTopology::TriangleList;
-        mesh_info.vertex_count = object.indices.size();
-        mesh_info.index_buffer = renderer->create_buffer({
-            .usages = saltus::BufferUsages{}.with_index(),
-            .access_hint = saltus::BufferAccessHint::Static,
-            .size = object.indices.size() * sizeof(uint32_t),
-            .data = reinterpret_cast<uint8_t*>(object.indices.data()),
-        });
-        mesh_info.index_format = saltus::MeshIndexFormat::UInt32;
-        mesh_info.vertex_attributes.push_back({
-            .name = "position",
-            .type = saltus::VertexAttributeType::Vec4f,
-            .buffer = renderer->create_buffer({
-                .usages = saltus::BufferUsages{}.with_vertex(),
-                .access_hint = saltus::BufferAccessHint::Static,
-                .size = object.positions.size() * sizeof(float) * 4,
-                .data = reinterpret_cast<uint8_t*>(object.positions.data()),
-            }),
-        });
-        mesh_info.vertex_attributes.push_back({
-            .name = "color",
-            .type = saltus::VertexAttributeType::Vec3f,
-            .buffer = renderer->create_buffer({
-                .usages = saltus::BufferUsages{}.with_vertex(),
-                .access_hint = saltus::BufferAccessHint::Static,
-                .size = object.positions.size() * sizeof(float) * 3,
-                .data = reinterpret_cast<uint8_t*>(object.colors.data()),
-            }),
-        });
-        mesh_info.vertex_attributes.push_back({
-            .name = "normal",
-            .type = saltus::VertexAttributeType::Vec3f,
-            .buffer = renderer->create_buffer({
-                .usages = saltus::BufferUsages{}.with_vertex(),
-                .access_hint = saltus::BufferAccessHint::Static,
-                .size = object.normals.size() * sizeof(float) * 3,
-                .data = reinterpret_cast<uint8_t*>(object.normals.data()),
-            }),
-        });
-        auto mesh = renderer->create_mesh(mesh_info);
-
+        auto mesh = obj_object_to_mesh(renderer, object);
         instance_groups.push_back(renderer->create_instance_group({
             .material = material,
             .mesh = mesh,
@@ -200,7 +259,7 @@ void render_thread_fn(
             ar, 0.001f, 100.f, std::numbers::pi_v<float> / 2.f
         );
         mvp_matrix *= math::transformation::translate3D(
-            0.f, 0.5f, 0.f
+            0.f, 0.5f, 7.5f
         );
         mvp_matrix *= math::transformation::rotate3Dy(time);
         mvp_matrix *= math::transformation::scale3D(
@@ -271,8 +330,8 @@ int main()
     logger::info() << "Creating renderer...\n";
     auto renderer = saltus::Renderer::create({
         .window = window,
-        // .target_present_mode = saltus::RendererPresentMode::VSync,
-        .target_present_mode = saltus::RendererPresentMode::Immediate,
+        .target_present_mode = saltus::RendererPresentMode::VSync,
+        // .target_present_mode = saltus::RendererPresentMode::Immediate,
     });
     logger::info() << "Renderer presentaition mode: " << renderer->current_present_mode() << "\n";
     logger::info() << "Creating rendering data...\n";

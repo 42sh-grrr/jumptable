@@ -9,7 +9,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 1
-map_Kd /home/malo/Dev/Forks/Sponza/textures/lion.tga
+map_Kd lion.tga
 
 newmtl Material__298.001
 Ns 7.843135
@@ -19,4 +19,4 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 1
-map_Kd /home/malo/Dev/Forks/Sponza/textures/background.tga
+map_Kd lion_background.tga
