@@ -19,6 +19,8 @@ namespace saltus::loaders::obj
         matrix::Vector3F transmission_filter_color = {{ 1., 1., 1. }};
         float            refraction_index          = 1;
 
+        std::string      diffuse_map;
+
         int illum;
     };
 

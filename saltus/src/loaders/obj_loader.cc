@@ -85,6 +85,10 @@ namespace saltus::loaders::obj
                     >> current_material.diffuse_color[1] 
                     >> current_material.diffuse_color[2];
             }
+            else if (token == "map_Kd")
+            {
+                iss >> current_material.diffuse_map;
+            }
             else if (token == "Ks")
             {
                 iss >> current_material.specular_color[0] 
@@ -95,9 +99,14 @@ namespace saltus::loaders::obj
             {
                 iss >> current_material.specular_exponent;
             }
-            else if (token == "d" || token == "Tr")
+            else if (token == "d")
             {
                 iss >> current_material.dissolved;
+            }
+            else if (token == "Tr")
+            {
+                iss >> current_material.dissolved;
+                current_material.dissolved = 1.f - current_material.dissolved;
             }
             else if (token == "Tf")
             {
