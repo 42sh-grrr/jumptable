@@ -10,6 +10,7 @@
 
 #include "matrix/vector.hh"
 #include "saltus/vulkan/vulkan_image.hh"
+#include "saltus/vulkan/vulkan_sampler.hh"
 #include "saltus/vulkan/vulkan_shader.hh"
 #include "saltus/vulkan/config.hh"
 #include "saltus/vulkan/vulkan_bind_group_layout.hh"
@@ -156,6 +157,11 @@ namespace saltus::vulkan
     std::shared_ptr<Image> VulkanRenderer::create_image(ImageCreateInfo info)
     {
         return std::make_shared<VulkanImage>(device_, info);
+    }
+
+    std::shared_ptr<Sampler> VulkanRenderer::create_sampler(SamplerCreateInfo info)
+    {
+        return std::make_shared<VulkanSampler>(device_, info);
     }
 
     std::shared_ptr<Shader> VulkanRenderer::create_shader(ShaderCreateInfo info)
