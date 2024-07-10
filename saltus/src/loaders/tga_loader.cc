@@ -131,12 +131,12 @@ namespace saltus::loaders::tga
             image.bytesPerPixel = header.color_map_depth / 8;
         }
 
-        // Convert BGR(A) to RGB(A)
-        if (image.bytesPerPixel >= 3) {
-            for (size_t i = 0; i < image.data.size(); i += image.bytesPerPixel) {
-                std::swap(image.data[i], image.data[i + 2]);
-            }
-        }
+        // // Convert BGR(A) to RGB(A)
+        // if (image.bytesPerPixel >= 3) {
+        //     for (size_t i = 0; i < image.data.size(); i += image.bytesPerPixel) {
+        //         std::swap(image.data[i], image.data[i + 2]);
+        //     }
+        // }
 
         return image;
     }

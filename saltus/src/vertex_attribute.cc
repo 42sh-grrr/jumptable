@@ -22,7 +22,7 @@ namespace saltus
 
     uint32_t VertexAttributeType::size() const
     {
-        uint32_t data_type_size;
+        uint32_t data_type_size = 1;
         switch (scalar_type)
         {
         case VertexAttributeDataType::u8:

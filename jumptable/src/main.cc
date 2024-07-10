@@ -30,6 +30,7 @@
 #include "saltus/loaders/obj_loader.hh"
 #include "saltus/loaders/tga_loader.hh"
 #include "saltus/sampler.hh"
+#include "saltus/texture.hh"
 
 static std::vector<char> read_full_file(const std::string& filename)
 {
@@ -66,16 +67,17 @@ struct SharedData
     QuickEventQueue<QuickEvent> events;
 };
 
-std::shared_ptr<saltus::BindGroup>
-obj_object_to_bind_group(
+std::shared_ptr<saltus::Texture>
+load_material_texture(
     saltus::Renderer *renderer,
-    saltus::loaders::obj::Object &,
-    saltus::loaders::obj::Material &material,
-    std::shared_ptr<saltus::BindGroupLayout> &layout
+    saltus::loaders::obj::Material &material
 ) {
-    logger::info() << "Loading texture " << material.diffuse_map << "\n";
+    std::string texpath = material.diffuse_map.empty() ? "assets/default.tga" : material.diffuse_map;
+
+    logger::info() << "Loading texture " << texpath << "\n";
     auto tgaimage =
-        saltus::loaders::tga::load_tga_image(material.diffuse_map);
+        saltus::loaders::tga::load_tga_image(texpath);
+    logger::info() << "Read! " << tgaimage.width << "x" << tgaimage.height << "\n";
 
     std::vector<uint8_t> new_pixels;
     new_pixels.resize(tgaimage.width*tgaimage.height*4);
@@ -91,26 +93,38 @@ obj_object_to_bind_group(
                 tgaimage.data[i * tgaimage.bytesPerPixel + j];
         }
     }
+    logger::info() << "Loaded! " << tgaimage.width << "x" << tgaimage.height << "\n";
     auto image = renderer->create_image({
         .width = tgaimage.width,
         .height = tgaimage.height,
         .usages = saltus::ImageUsages{}.with_sampled(),
         .format = {
-            .pixel_format = saltus::ImagePixelFormat::RGBA,
+            .pixel_format = saltus::ImagePixelFormat::BGRA,
             .data_type = saltus::ImageDataType::srgb8,
         },
         .initial_data = new_pixels.data(),
     });
-    logger::info() << "Loaded! " << tgaimage.width << "x" << tgaimage.height << "\n";
+    logger::info() << "Uploaded! " << tgaimage.width << "x" << tgaimage.height << "\n";
 
     saltus::SamplerCreateInfo sampler_info{};
+    sampler_info.wrap_u = saltus::SamplerWraping::Repeat;
+    sampler_info.wrap_v = saltus::SamplerWraping::Repeat;
     auto sampler = renderer->create_sampler(sampler_info);
 
     auto texture = renderer->create_texture({
         .image = image,
         .sampler = sampler
     });
+    return texture;
+}
 
+std::shared_ptr<saltus::BindGroup>
+obj_object_to_bind_group(
+    saltus::Renderer *renderer,
+    saltus::loaders::obj::Object &,
+    std::shared_ptr<saltus::Texture> &texture,
+    std::shared_ptr<saltus::BindGroupLayout> &layout
+) {
     auto bind_group = renderer->create_bind_group({ .layout = layout });
     bind_group->set_binding(1, texture);
     return bind_group;
@@ -217,8 +231,8 @@ void render_thread_fn(
 ) {
     logger::info() << "Loading model...\n";
     // auto model = saltus::obj::load_obj("assets/cube.obj");
-    // auto model = saltus::loaders::obj::load_obj("assets/sponza/sponzaobj.obj");
-    auto model = saltus::loaders::obj::load_obj("assets/lion.obj");
+    auto model = saltus::loaders::obj::load_obj("assets/sponza/sponzaobj.obj");
+    // auto model = saltus::loaders::obj::load_obj("assets/lion.obj");
     logger::info() << "Model loaded !\n";
 
     auto receiver = shared_data->events.subscribe();
@@ -301,13 +315,26 @@ void render_thread_fn(
     });
     auto material = renderer->create_material(material_info);
 
+    logger::info() << "Loading textures...\n";
+    std::vector<std::shared_ptr<saltus::Texture>> textures;
+    std::transform(
+        model.materials.begin(),
+        model.materials.end(),
+        std::back_insert_iterator(textures),
+        [&renderer](auto &material){
+            return load_material_texture(renderer, material);
+        }
+    );
+    logger::info() << "Finished loading textures\n";
+
     for (auto &object : model.objects)
     {
         auto mesh = obj_object_to_mesh(
             renderer, object, model.materials.at(object.material_index.value())
         );
         auto bg2 = obj_object_to_bind_group(
-            renderer, object, model.materials.at(object.material_index.value()),
+            renderer, object,
+            textures.at(object.material_index.value()),
             obj_bind_group_layout
         );
         instance_groups.push_back(renderer->create_instance_group({
@@ -331,12 +358,12 @@ void render_thread_fn(
         mvp_matrix = matrix::identity<float, 4>();
 
         mvp_matrix *= math::transformation::perspective(
-            ar, 0.001f, 100.f, std::numbers::pi_v<float> / 2.f
+            ar, 0.001f, 100.f, (2.f * std::numbers::pi_v<float>) / 3.f
         );
         mvp_matrix *= math::transformation::translate3D(
-            0.f, 0.f, 0.4f
+            0.f, 0.5f, 0.f
         );
-        mvp_matrix *= math::transformation::rotate3Dy(time);
+        mvp_matrix *= math::transformation::rotate3Dy(time / 2.f);
         mvp_matrix *= math::transformation::scale3D(
             1.f, -1.f, 1.f
         );

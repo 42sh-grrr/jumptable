@@ -17,7 +17,7 @@ namespace saltus
 
     std::size_t ImageFormat::bytes_per_pixel() const
     {
-        std::size_t size;
+        std::size_t size = 1;
         switch (pixel_format)
         {
         case ImagePixelFormat::R:
