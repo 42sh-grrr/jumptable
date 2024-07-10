@@ -116,4 +116,14 @@ namespace saltus::vulkan
     {
         return device_;
     }
+
+    const VkSampler &VulkanSampler::handle() const
+    {
+        return sampler_;
+    }
+
+    VulkanSampler::operator VkSampler() const
+    {
+        return handle();
+    }
 } // namespace saltus::vulkan

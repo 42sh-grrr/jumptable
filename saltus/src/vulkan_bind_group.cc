@@ -1,8 +1,11 @@
 #include "saltus/vulkan/vulkan_bind_group.hh"
+#include <cassert>
+#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 #include "saltus/vulkan/vulkan_buffer.hh"
+#include "saltus/vulkan/vulkan_texture.hh"
 
 namespace saltus::vulkan
 {
@@ -86,6 +89,8 @@ namespace saltus::vulkan
             throw std::runtime_error("Cannot set a binding with a buffer if the binding isn't a buffer type");
         }
 
+        binds_.insert({ binding_id, buffer });
+
         auto vkBuffer = std::dynamic_pointer_cast<VulkanBuffer>(buffer);
 
         VkDescriptorBufferInfo buff_info {
@@ -102,6 +107,43 @@ namespace saltus::vulkan
         write.descriptorType = binding_type_to_descriptor_type(bind_group->type);
         write.descriptorCount = 1;
         write.pBufferInfo = &buff_info;
+
+        vkUpdateDescriptorSets(*device_, 1, &write, 0, nullptr);
+    }
+
+    void VulkanBindGroup::set_binding(
+        uint32_t binding_id,
+        const std::shared_ptr<Texture> &texture,
+        uint32_t array_index
+    ) {
+        auto *bind_group = layout()->get_binding(binding_id);
+        if (!bind_group)
+        {
+            throw std::runtime_error("The provided binding id isn't in the layout");
+        }
+
+        if (bind_group->type != BindingType::Texture) {
+            throw std::runtime_error("Cannot set a binding with a texture if the binding isn't a texture type");
+        }
+
+        binds_.insert({ binding_id, texture });
+
+        auto vkTex = std::dynamic_pointer_cast<VulkanTexture>(texture);
+
+        VkDescriptorImageInfo img_info {
+            .sampler = vkTex->sampler()->handle(),
+            .imageView = vkTex->image_view()->view(),
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+
+        VkWriteDescriptorSet write{};
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstSet = descriptor_set_;
+        write.dstBinding = binding_id;
+        write.dstArrayElement = array_index;
+        write.descriptorType = binding_type_to_descriptor_type(bind_group->type);
+        write.descriptorCount = 1;
+        write.pImageInfo = &img_info;
 
         vkUpdateDescriptorSets(*device_, 1, &write, 0, nullptr);
     }

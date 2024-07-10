@@ -1,23 +1,12 @@
 #pragma once
 
-#include <stdexcept>
+#include <vulkan/vulkan_core.h>
 #include "saltus/bind_group_layout.hh"
 #include "saltus/vulkan/vulkan_device.hh"
 
 namespace saltus::vulkan
 {
-    inline VkDescriptorType binding_type_to_descriptor_type(BindingType type)
-    {
-        switch (type)
-        {
-        case BindingType::UniformBuffer:
-            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        case BindingType::StorageBuffer:
-            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        default:
-            throw std::runtime_error("Unknown binding type");
-        }
-    }
+    VkDescriptorType binding_type_to_descriptor_type(BindingType type);
 
     class VulkanBindGroupLayout: public BindGroupLayout
     {

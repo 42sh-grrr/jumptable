@@ -9,6 +9,7 @@
 #include "saltus/material.hh"
 #include "saltus/mesh.hh"
 #include "saltus/sampler.hh"
+#include "saltus/texture.hh"
 #include "saltus/window.hh"
 #include "saltus/shader.hh"
 #include "saltus/buffer.hh"
@@ -56,6 +57,7 @@ namespace saltus
         virtual std::shared_ptr<Buffer> create_buffer(BufferCreateInfo) = 0;
         virtual std::shared_ptr<Image> create_image(ImageCreateInfo) = 0;
         virtual std::shared_ptr<Sampler> create_sampler(SamplerCreateInfo) = 0;
+        virtual std::shared_ptr<Texture> create_texture(TextureCreateInfo) = 0;
         virtual std::shared_ptr<Shader> create_shader(ShaderCreateInfo) = 0;
         virtual std::shared_ptr<Material> create_material(MaterialCreateInfo) = 0;
         virtual std::shared_ptr<Mesh> create_mesh(MeshCreateInfo) = 0;

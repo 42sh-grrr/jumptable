@@ -24,10 +24,12 @@
 #include <variant>
 #include "math/transformation.hh"
 #include "quick_event_queue.hh"
+#include "saltus/bind_group_layout.hh"
 #include "saltus/image.hh"
 #include "saltus/instance_group.hh"
 #include "saltus/loaders/obj_loader.hh"
 #include "saltus/loaders/tga_loader.hh"
+#include "saltus/sampler.hh"
 
 static std::vector<char> read_full_file(const std::string& filename)
 {
@@ -64,14 +66,13 @@ struct SharedData
     QuickEventQueue<QuickEvent> events;
 };
 
-std::shared_ptr<saltus::Mesh>
-obj_object_to_mesh(
+std::shared_ptr<saltus::BindGroup>
+obj_object_to_bind_group(
     saltus::Renderer *renderer,
-    saltus::loaders::obj::Object &object,
-    saltus::loaders::obj::Material &material
+    saltus::loaders::obj::Object &,
+    saltus::loaders::obj::Material &material,
+    std::shared_ptr<saltus::BindGroupLayout> &layout
 ) {
-    size_t vertex_count = object.indices.size();
-
     logger::info() << "Loading texture " << material.diffuse_map << "\n";
     auto tgaimage =
         saltus::loaders::tga::load_tga_image(material.diffuse_map);
@@ -101,6 +102,27 @@ obj_object_to_mesh(
         .initial_data = new_pixels.data(),
     });
     logger::info() << "Loaded! " << tgaimage.width << "x" << tgaimage.height << "\n";
+
+    saltus::SamplerCreateInfo sampler_info{};
+    auto sampler = renderer->create_sampler(sampler_info);
+
+    auto texture = renderer->create_texture({
+        .image = image,
+        .sampler = sampler
+    });
+
+    auto bind_group = renderer->create_bind_group({ .layout = layout });
+    bind_group->set_binding(1, texture);
+    return bind_group;
+}
+
+std::shared_ptr<saltus::Mesh>
+obj_object_to_mesh(
+    saltus::Renderer *renderer,
+    saltus::loaders::obj::Object &object,
+    saltus::loaders::obj::Material &
+) {
+    size_t vertex_count = object.indices.size();
 
     if (object.colors.empty())
     {
@@ -214,6 +236,16 @@ void render_thread_fn(
         .layout = bind_group_layout,
     });
 
+    auto obj_bind_group_layout = renderer->create_bind_group_layout({
+        .bindings = {
+            {
+                .type = saltus::BindingType::Texture,
+                .count = 1,
+                .binding_id = 1,
+            }
+        }
+    });
+
     std::vector<float> uniform_data = {
         1.0f, 0.0f, 0.0f, 0.0f,
         0.0f, 1.0f, 0.0f, 0.0f,
@@ -236,6 +268,7 @@ void render_thread_fn(
 
     saltus::MaterialCreateInfo material_info{};
     material_info.bind_group_layouts.push_back(bind_group_layout);
+    material_info.bind_group_layouts.push_back(obj_bind_group_layout);
     material_info.primitive_topology = saltus::PritmitiveTopology::TriangleList;
     material_info.cull_mode = saltus::MaterialCullMode::None;
     material_info.vertex_shader = renderer->create_shader({
@@ -273,10 +306,14 @@ void render_thread_fn(
         auto mesh = obj_object_to_mesh(
             renderer, object, model.materials.at(object.material_index.value())
         );
+        auto bg2 = obj_object_to_bind_group(
+            renderer, object, model.materials.at(object.material_index.value()),
+            obj_bind_group_layout
+        );
         instance_groups.push_back(renderer->create_instance_group({
             .material = material,
             .mesh = mesh,
-            .bind_groups = { bind_group }
+            .bind_groups = { bind_group, bg2 }
         }));
     }
 

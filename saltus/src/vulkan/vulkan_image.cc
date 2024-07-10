@@ -215,14 +215,9 @@ namespace saltus::vulkan
         return device_;
     }
 
-    RawVulkanImage &VulkanImage::image()
+    const std::shared_ptr<RawVulkanImage> &VulkanImage::raw_image() const
     {
-        return *image_;
-    }
-
-    const RawVulkanImage &VulkanImage::image() const
-    {
-        return *image_;
+        return image_;
     }
 
     void VulkanImage::write(uint8_t *data)

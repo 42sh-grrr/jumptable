@@ -14,14 +14,13 @@ namespace saltus::vulkan
 
         const std::shared_ptr<VulkanDevice> &device() const;
 
-        RawVulkanImage &image();
-        const RawVulkanImage &image() const;
+        const std::shared_ptr<RawVulkanImage> &raw_image() const;
 
         virtual void write(uint8_t *data) override;
 
     private:
         std::shared_ptr<VulkanDevice> device_;
 
-        std::unique_ptr<RawVulkanImage> image_;
+        std::shared_ptr<RawVulkanImage> image_;
     };
 } // namespace saltus::vulkan

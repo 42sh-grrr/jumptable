@@ -60,7 +60,7 @@ namespace saltus::vulkan
 
     using BB = RawVulkanImage::BarrierBuilder;
 
-    BB::BarrierBuilder(RawVulkanImage &img): BarrierBuilder(img.image())
+    BB::BarrierBuilder(RawVulkanImage &img): BarrierBuilder(img.handle())
     {
         
     }
@@ -147,7 +147,8 @@ namespace saltus::vulkan
         device_(builder.device),
         size_(builder.size),
         array_layers_(builder.array_layers),
-        image_type_(builder.image_type)
+        image_type_(builder.image_type),
+        format_(builder.format)
     {
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -218,7 +219,7 @@ namespace saltus::vulkan
         return image_type_;
     }
 
-    const VkImage &RawVulkanImage::image() const
+    const VkImage &RawVulkanImage::handle() const
     {
         return image_;
     }
@@ -226,6 +227,11 @@ namespace saltus::vulkan
     const VkDeviceMemory &RawVulkanImage::image_memory() const
     {
         return image_memory_;
+    }
+
+    const VkFormat &RawVulkanImage::format() const
+    {
+        return format_;
     }
 
     void RawVulkanImage::write(uint8_t *data, size_t size)

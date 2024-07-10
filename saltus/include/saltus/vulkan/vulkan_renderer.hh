@@ -34,6 +34,7 @@ namespace saltus::vulkan
         std::shared_ptr<Buffer> create_buffer(BufferCreateInfo) override;
         std::shared_ptr<Image> create_image(ImageCreateInfo) override;
         std::shared_ptr<Sampler> create_sampler(SamplerCreateInfo) override;
+        std::shared_ptr<Texture> create_texture(TextureCreateInfo) override;
         std::shared_ptr<Shader> create_shader(ShaderCreateInfo info) override;
         std::shared_ptr<Material> create_material(MaterialCreateInfo) override;
         std::shared_ptr<Mesh> create_mesh(MeshCreateInfo) override;

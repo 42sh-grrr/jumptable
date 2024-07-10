@@ -78,8 +78,9 @@ namespace saltus::vulkan
         const uint32_t &array_layers() const;
         const VkImageType &image_type() const;
 
-        const VkImage &image() const;
+        const VkImage &handle() const;
         const VkDeviceMemory &image_memory() const;
+        const VkFormat &format() const;
 
         void write(uint8_t *data, size_t size);
         void write(const RawVulkanBuffer &buffer);
@@ -90,6 +91,7 @@ namespace saltus::vulkan
 
         uint32_t array_layers_;
         VkImageType image_type_;
+        VkFormat format_;
 
         VkImage image_ = VK_NULL_HANDLE;
         VkDeviceMemory image_memory_ = VK_NULL_HANDLE;

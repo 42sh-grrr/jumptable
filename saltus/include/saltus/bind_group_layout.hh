@@ -9,6 +9,7 @@ namespace saltus
     {
         UniformBuffer,
         StorageBuffer,
+        Texture,
     };
 
     struct BindGroupLayoutBindingInfo

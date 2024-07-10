@@ -1,5 +1,6 @@
 #pragma once
 
+#include <unordered_map>
 #include <vulkan/vulkan_core.h>
 #include "saltus/bind_group.hh"
 #include "saltus/vulkan/vulkan_bind_group_layout.hh"
@@ -17,7 +18,7 @@ namespace saltus::vulkan
 
         const VkDescriptorSet &descriptor_set() const;
 
-        virtual void set_binding(
+        void set_binding(
             uint32_t binding_id,
             const std::shared_ptr<Buffer> &buffer,
             uint32_t array_index = 0,
@@ -25,9 +26,18 @@ namespace saltus::vulkan
             std::optional<uint64_t> size = std::nullopt
         ) override;
 
+        void set_binding(
+            uint32_t binding_id,
+            const std::shared_ptr<Texture> &texture,
+            uint32_t array_index = 0
+        ) override;
+
     private:
         std::shared_ptr<VulkanDevice> device_;
         std::shared_ptr<VulkanBindGroupLayout> bind_group_layout_;
+
+        /// Used to keep alive resources used by bindings
+        std::unordered_map<uint32_t, std::shared_ptr<void>> binds_;
 
         VkDescriptorPool descriptor_pool_;
         VkDescriptorSet descriptor_set_;

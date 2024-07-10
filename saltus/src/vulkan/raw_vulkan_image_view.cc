@@ -1,4 +1,5 @@
 #include "saltus/vulkan/raw_vulkan_image_view.hh"
+#include <iostream>
 #include <vulkan/vulkan_core.h>
 
 namespace saltus::vulkan
@@ -11,7 +12,7 @@ namespace saltus::vulkan
     ): image_(image) {
         VkImageViewCreateInfo viewInfo{};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        viewInfo.image = image->image();
+        viewInfo.image = image->handle();
         viewInfo.viewType = view_type;
         viewInfo.format = format;
 
@@ -23,9 +24,8 @@ namespace saltus::vulkan
         viewInfo.subresourceRange.layerCount = image->array_layers();
 
         VkResult result = vkCreateImageView(*image->device(), &viewInfo, nullptr, &view_);
-        if (result != VK_SUCCESS) {
+        if (result != VK_SUCCESS)
             throw std::runtime_error("failed to create texture image view!");
-        }
     }
 
     RawVulkanImageView::~RawVulkanImageView()

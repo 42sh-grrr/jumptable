@@ -5,6 +5,7 @@
 #include <optional>
 #include "saltus/bind_group_layout.hh"
 #include "saltus/buffer.hh"
+#include "saltus/texture.hh"
 
 namespace saltus
 {
@@ -22,15 +23,18 @@ namespace saltus
 
         const std::shared_ptr<BindGroupLayout> &layout() const;
 
-        // NOTE: Add overloads for non-buffer (i.e. textures) backed uniforms
-        //       comment to be removed these are added
-
         virtual void set_binding(
             uint32_t binding_id,
             const std::shared_ptr<Buffer> &buffer,
             uint32_t array_index = 0,
             uint64_t offset = 0,
             std::optional<uint64_t> size = std::nullopt
+        ) = 0;
+
+        virtual void set_binding(
+            uint32_t binding_id,
+            const std::shared_ptr<Texture> &buffer,
+            uint32_t array_index = 0
         ) = 0;
 
     protected:

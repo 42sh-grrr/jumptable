@@ -20,6 +20,7 @@
 #include "saltus/vulkan/vulkan_render_target.hh"
 #include "saltus/vulkan/vulkan_instance_group.hh"
 #include "saltus/vulkan/frame_ring.hh"
+#include "saltus/vulkan/vulkan_texture.hh"
 
 namespace saltus::vulkan
 {
@@ -162,6 +163,11 @@ namespace saltus::vulkan
     std::shared_ptr<Sampler> VulkanRenderer::create_sampler(SamplerCreateInfo info)
     {
         return std::make_shared<VulkanSampler>(device_, info);
+    }
+
+    std::shared_ptr<Texture> VulkanRenderer::create_texture(TextureCreateInfo info)
+    {
+        return std::make_shared<VulkanTexture>(device_, info);
     }
 
     std::shared_ptr<Shader> VulkanRenderer::create_shader(ShaderCreateInfo info)

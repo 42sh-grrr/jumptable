@@ -4,6 +4,20 @@
 
 namespace saltus::vulkan
 {
+    VkDescriptorType binding_type_to_descriptor_type(BindingType type)
+    {
+        switch (type)
+        {
+        case BindingType::UniformBuffer:
+            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        case BindingType::StorageBuffer:
+            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        case BindingType::Texture:
+            return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        }
+        throw std::runtime_error("Unknown binding type");
+    }
+
     VulkanBindGroupLayout::VulkanBindGroupLayout(
         std::shared_ptr<VulkanDevice> device,
         BindGroupLayoutCreateInfo info
