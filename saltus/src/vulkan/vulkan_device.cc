@@ -18,18 +18,6 @@ namespace saltus::vulkan
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
     };
-    VkPhysicalDeviceDynamicRenderingFeaturesKHR DYNAMIC_RENDERING_FEATURES = {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR,
-        .pNext = nullptr,
-        .dynamicRendering = true,
-    };
-    const VkPhysicalDeviceFeatures2 DEVICE_FEATURES2 {
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR,
-        .pNext = &DYNAMIC_RENDERING_FEATURES,
-        .features = {
-        
-        },
-    };
 
     VulkanDevice::VulkanDevice(const Window &window, std::shared_ptr<VulkanInstance> instance)
         : instance_(instance), window_(window)
@@ -37,6 +25,8 @@ namespace saltus::vulkan
         surface_ = window.create_vulkan_surface(instance->instance());
         
         choose_physical_device();
+
+        vkGetPhysicalDeviceProperties(physical_device_, &physical_device_properties_);
 
         QueueFamilyIndices families = get_physical_device_family_indices(physical_device_);
 
@@ -56,9 +46,21 @@ namespace saltus::vulkan
             queue_create_infos.push_back(info);
         }
 
+        VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering_features = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR,
+            .pNext = nullptr,
+            .dynamicRendering = true,
+        };
+        VkPhysicalDeviceFeatures2 device_features2 {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR,
+            .pNext = &dynamic_rendering_features,
+            .features = { },
+        };
+        device_features2.features.samplerAnisotropy = VK_TRUE;
+
         VkDeviceCreateInfo create_info{};
         create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        create_info.pNext = &DEVICE_FEATURES2;
+        create_info.pNext = &device_features2;
 
         create_info.queueCreateInfoCount = queue_create_infos.size();
         create_info.pQueueCreateInfos = queue_create_infos.data();
@@ -117,6 +119,11 @@ namespace saltus::vulkan
     const Window &VulkanDevice::window() const
     {
         return window_;
+    }
+
+    const VkPhysicalDeviceProperties &VulkanDevice::physical_device_properties() const
+    {
+        return physical_device_properties_;
     }
 
     QueueFamilyIndices VulkanDevice::get_physical_device_family_indices() const
@@ -316,7 +323,7 @@ namespace saltus::vulkan
 
         vkGetPhysicalDeviceFeatures2(physical_device, &device_features2);
 
-        if (!dynamic_rendering_features.dynamicRendering)
+        if (!dynamic_rendering_features.dynamicRendering || !device_features2.features.samplerAnisotropy)
             return false;
 
         return true;
