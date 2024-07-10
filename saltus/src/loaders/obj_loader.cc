@@ -61,6 +61,8 @@ namespace saltus::loaders::obj
         std::string line;
         while (std::getline(file, line))
         {
+            if (line[0] == '#')
+                continue;
             std::istringstream iss(line);
             std::string token;
             iss >> token;
@@ -142,6 +144,7 @@ namespace saltus::loaders::obj
 
         LoadedObj result{};
         Object current_object{};
+        VertexGroup current_group{};
         std::unordered_map<std::string, size_t> material_map;
 
         std::unordered_map<IndexGroup, uint32_t> temp_indices;
@@ -161,6 +164,9 @@ namespace saltus::loaders::obj
             {
                 if (!current_object.positions.empty())
                 {
+                    if (current_group.indices.size() != 0)
+                        current_object.groups.push_back(std::move(current_group));
+                    current_group = VertexGroup();
                     result.objects.push_back(std::move(current_object));
                     current_object = Object();
                 }
@@ -249,18 +255,24 @@ namespace saltus::loaders::obj
                         index = it->second;
                     }
 
-                    current_object.indices.push_back(index);
+                    current_group.indices.push_back(index);
                 }
                 if (face_vertex_index != 3)
                     throw std::runtime_error("Obj file has non-triangle faces which isn't supported");
             }
             else if (token == "usemtl")
             {
+                if (current_group.indices.size() != 0)
+                {
+                    current_object.groups.push_back(std::move(current_group));
+                    current_group = VertexGroup();
+                }
+
                 std::string material_name;
                 iss >> material_name;
                 auto it = material_map.find(material_name);
                 if (it != material_map.end())
-                    current_object.material_index = it->second;
+                    current_group.material_index = it->second;
             }
             else if (token == "mtllib")
             {
@@ -277,10 +289,10 @@ namespace saltus::loaders::obj
             }
         }
 
-        if (!current_object.positions.empty())
-        {
+        if (current_group.indices.size() != 0)
+            current_object.groups.push_back(std::move(current_group));
+        if (!current_object.groups.empty())
             result.objects.push_back(std::move(current_object));
-        }
 
         return result;
     }

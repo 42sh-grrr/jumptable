@@ -7,6 +7,7 @@
 #include <chrono>
 #include <iterator>
 #include <matrix/matrix.hh>
+#include <memory>
 #include <numbers>
 #include <saltus/window.hh>
 #include <saltus/window_events.hh>
@@ -24,13 +25,13 @@
 #include <variant>
 #include "math/transformation.hh"
 #include "quick_event_queue.hh"
+#include "saltus/bind_group.hh"
 #include "saltus/bind_group_layout.hh"
 #include "saltus/image.hh"
 #include "saltus/instance_group.hh"
 #include "saltus/loaders/obj_loader.hh"
 #include "saltus/loaders/tga_loader.hh"
 #include "saltus/sampler.hh"
-#include "saltus/texture.hh"
 
 static std::vector<char> read_full_file(const std::string& filename)
 {
@@ -67,12 +68,20 @@ struct SharedData
     QuickEventQueue<QuickEvent> events;
 };
 
-std::shared_ptr<saltus::Texture>
-load_material_texture(
+struct Material
+{
+    std::shared_ptr<saltus::Material> saltus_material;
+    std::shared_ptr<saltus::BindGroup> bind_group;
+};
+
+std::unique_ptr<Material>
+obj_material_to_material(
     saltus::Renderer *renderer,
-    saltus::loaders::obj::Material &material
+    saltus::loaders::obj::Material &obj_material,
+    std::shared_ptr<saltus::Material> &saltus_material,
+    std::shared_ptr<saltus::BindGroupLayout> &layout
 ) {
-    std::string texpath = material.diffuse_map.empty() ? "assets/default.tga" : material.diffuse_map;
+    std::string texpath = obj_material.diffuse_map.empty() ? "assets/default.tga" : obj_material.diffuse_map;
 
     logger::debug() << "Loading texture " << texpath << "\n";
     auto tgaimage =
@@ -109,7 +118,7 @@ load_material_texture(
     logger::debug() << "Uploaded!\n";
 
     saltus::SamplerCreateInfo sampler_info{};
-    if (material.diffuse_map.empty())
+    if (obj_material.diffuse_map.empty())
     {
         sampler_info.mag_filter = saltus::SamplerFilter::Nearest;
         sampler_info.min_filter = saltus::SamplerFilter::Nearest;
@@ -120,28 +129,24 @@ load_material_texture(
         .image = image,
         .sampler = sampler
     });
-    return texture;
-}
 
-std::shared_ptr<saltus::BindGroup>
-obj_object_to_bind_group(
-    saltus::Renderer *renderer,
-    saltus::loaders::obj::Object &,
-    std::shared_ptr<saltus::Texture> &texture,
-    std::shared_ptr<saltus::BindGroupLayout> &layout
-) {
     auto bind_group = renderer->create_bind_group({ .layout = layout });
-    bind_group->set_binding(1, texture);
-    return bind_group;
+    bind_group->set_binding(0, texture);
+
+    std::unique_ptr<Material> material = std::make_unique<Material>();
+    material->saltus_material = saltus_material;
+    material->bind_group = bind_group;
+    return material;
 }
 
-std::shared_ptr<saltus::Mesh>
-obj_object_to_mesh(
+std::vector<std::shared_ptr<saltus::InstanceGroup>>
+obj_object_to_instance_group(
     saltus::Renderer *renderer,
     saltus::loaders::obj::Object &object,
-    saltus::loaders::obj::Material &
+    std::shared_ptr<saltus::BindGroup> global_bind_group,
+    std::vector<std::unique_ptr<Material>> &materials
 ) {
-    size_t vertex_count = object.indices.size();
+    size_t vertex_count = object.positions.size();
 
     if (object.colors.empty())
     {
@@ -160,7 +165,6 @@ obj_object_to_mesh(
         );
     }
     std::vector<matrix::Vector2F> texcoords;
-    texcoords.reserve(object.texture_coordinates.size());
     std::transform(
         object.texture_coordinates.cbegin(), object.texture_coordinates.cend(),
         std::back_insert_iterator<std::vector<matrix::Vector2F>>(texcoords),
@@ -177,57 +181,93 @@ obj_object_to_mesh(
         );
     }
 
-    saltus::MeshCreateInfo mesh_info{};
-    mesh_info.primitive_topology = saltus::PritmitiveTopology::TriangleList;
-    mesh_info.vertex_count = vertex_count;
-    mesh_info.index_buffer = renderer->create_buffer({
-        .usages = saltus::BufferUsages{}.with_index(),
+    auto positions_buffer = renderer->create_buffer({
+        .usages = saltus::BufferUsages{}.with_vertex(),
         .access_hint = saltus::BufferAccessHint::Static,
-        .size = object.indices.size() * sizeof(uint32_t),
-        .data = reinterpret_cast<uint8_t*>(object.indices.data()),
+        .size = object.positions.size() * sizeof(float) * 4,
+        .data = reinterpret_cast<uint8_t*>(object.positions.data()),
     });
-    mesh_info.index_format = saltus::MeshIndexFormat::UInt32;
-    mesh_info.vertex_attributes.push_back({
-        .name = "position",
-        .type = saltus::VertexAttributeType::Vec4f,
-        .buffer = renderer->create_buffer({
-            .usages = saltus::BufferUsages{}.with_vertex(),
-            .access_hint = saltus::BufferAccessHint::Static,
-            .size = object.positions.size() * sizeof(float) * 4,
-            .data = reinterpret_cast<uint8_t*>(object.positions.data()),
-        }),
+    auto colors_buffer = renderer->create_buffer({
+        .usages = saltus::BufferUsages{}.with_vertex(),
+        .access_hint = saltus::BufferAccessHint::Static,
+        .size = object.colors.size() * sizeof(float) * 3,
+        .data = reinterpret_cast<uint8_t*>(object.colors.data()),
     });
-    mesh_info.vertex_attributes.push_back({
-        .name = "color",
-        .type = saltus::VertexAttributeType::Vec3f,
-        .buffer = renderer->create_buffer({
-            .usages = saltus::BufferUsages{}.with_vertex(),
-            .access_hint = saltus::BufferAccessHint::Static,
-            .size = object.colors.size() * sizeof(float) * 3,
-            .data = reinterpret_cast<uint8_t*>(object.colors.data()),
-        }),
+    auto normals_buffer = renderer->create_buffer({
+        .usages = saltus::BufferUsages{}.with_vertex(),
+        .access_hint = saltus::BufferAccessHint::Static,
+        .size = object.normals.size() * sizeof(float) * 3,
+        .data = reinterpret_cast<uint8_t*>(object.normals.data()),
     });
-    mesh_info.vertex_attributes.push_back({
-        .name = "normal",
-        .type = saltus::VertexAttributeType::Vec3f,
-        .buffer = renderer->create_buffer({
-            .usages = saltus::BufferUsages{}.with_vertex(),
-            .access_hint = saltus::BufferAccessHint::Static,
-            .size = object.normals.size() * sizeof(float) * 3,
-            .data = reinterpret_cast<uint8_t*>(object.normals.data()),
-        }),
+    auto uvs_buffer = renderer->create_buffer({
+        .usages = saltus::BufferUsages{}.with_vertex(),
+        .access_hint = saltus::BufferAccessHint::Static,
+        .size = texcoords.size() * sizeof(float) * 2,
+        .data = reinterpret_cast<uint8_t*>(texcoords.data()),
     });
-    mesh_info.vertex_attributes.push_back({
-        .name = "uvs",
-        .type = saltus::VertexAttributeType::Vec2f,
-        .buffer = renderer->create_buffer({
-            .usages = saltus::BufferUsages{}.with_vertex(),
-            .access_hint = saltus::BufferAccessHint::Static,
-            .size = texcoords.size() * sizeof(float) * 2,
-            .data = reinterpret_cast<uint8_t*>(texcoords.data()),
-        }),
-    });
-    return renderer->create_mesh(mesh_info);
+
+    std::vector<std::shared_ptr<saltus::InstanceGroup>> instance_groups;
+    for (const auto &group : object.groups)
+    {
+        saltus::MeshCreateInfo mesh_info{};
+        mesh_info.primitive_topology = saltus::PritmitiveTopology::TriangleList;
+        mesh_info.vertex_count = group.indices.size();
+
+        std::vector<uint16_t> indices16;
+        if (object.positions.size() < 65535)
+        {
+            indices16.assign(group.indices.cbegin(), group.indices.cend());
+            mesh_info.index_format = saltus::MeshIndexFormat::UInt16;
+            mesh_info.index_buffer = renderer->create_buffer({
+                .usages = saltus::BufferUsages{}.with_index(),
+                .access_hint = saltus::BufferAccessHint::Static,
+                .size = indices16.size() * sizeof(uint16_t),
+                .data = reinterpret_cast<const uint8_t*>(indices16.data()),
+            });
+        }
+        else {
+            mesh_info.index_format = saltus::MeshIndexFormat::UInt32;
+            mesh_info.index_buffer = renderer->create_buffer({
+                .usages = saltus::BufferUsages{}.with_index(),
+                .access_hint = saltus::BufferAccessHint::Static,
+                .size = group.indices.size() * sizeof(uint32_t),
+                .data = reinterpret_cast<const uint8_t*>(group.indices.data()),
+            });
+        }
+
+        mesh_info.vertex_attributes.push_back({
+            .name = "position",
+            .type = saltus::VertexAttributeType::Vec4f,
+            .buffer = positions_buffer,
+        });
+        mesh_info.vertex_attributes.push_back({
+            .name = "color",
+            .type = saltus::VertexAttributeType::Vec3f,
+            .buffer = colors_buffer,
+        });
+        mesh_info.vertex_attributes.push_back({
+            .name = "normal",
+            .type = saltus::VertexAttributeType::Vec3f,
+            .buffer = normals_buffer,
+        });
+        mesh_info.vertex_attributes.push_back({
+            .name = "uvs",
+            .type = saltus::VertexAttributeType::Vec2f,
+            .buffer = uvs_buffer,
+        });
+
+        auto saltus_mesh = renderer->create_mesh(mesh_info);
+
+        auto &material = materials.at(group.material_index.value());
+
+        auto ig = renderer->create_instance_group({
+            .material = material->saltus_material,
+            .mesh = saltus_mesh,
+            .bind_groups = { global_bind_group, material->bind_group },
+        });
+        instance_groups.push_back(ig);
+    }
+    return instance_groups;
 }
 
 void render_thread_fn(
@@ -238,6 +278,7 @@ void render_thread_fn(
     // auto model = saltus::obj::load_obj("assets/cube.obj");
     auto model = saltus::loaders::obj::load_obj("assets/sponza/sponzaobj.obj");
     // auto model = saltus::loaders::obj::load_obj("assets/lion.obj");
+    // auto model = saltus::loaders::obj::load_obj("assets/vase.obj");
     logger::info() << "Model loaded !\n";
 
     auto receiver = shared_data->events.subscribe();
@@ -260,7 +301,7 @@ void render_thread_fn(
             {
                 .type = saltus::BindingType::Texture,
                 .count = 1,
-                .binding_id = 1,
+                .binding_id = 0,
             }
         }
     });
@@ -318,16 +359,19 @@ void render_thread_fn(
         .name = "uvs",
         .type = saltus::VertexAttributeType::Vec2f,
     });
-    auto material = renderer->create_material(material_info);
+    auto saltus_material = renderer->create_material(material_info);
 
     logger::info() << "Loading textures...\n";
-    std::vector<std::shared_ptr<saltus::Texture>> textures;
+    std::vector<std::unique_ptr<Material>> materials;
     std::transform(
         model.materials.begin(),
         model.materials.end(),
-        std::back_insert_iterator(textures),
-        [&renderer](auto &material){
-            return load_material_texture(renderer, material);
+        std::back_insert_iterator(materials),
+        [&](auto &obj_material){
+            return obj_material_to_material(
+                renderer, obj_material,
+                saltus_material, obj_bind_group_layout
+            );
         }
     );
     logger::info() << "Finished loading textures\n";
@@ -336,19 +380,12 @@ void render_thread_fn(
     for (auto &object : model.objects)
     {
         logger::debug() << "Loading object " << object.name.value_or("") << "\n";
-        auto mesh = obj_object_to_mesh(
-            renderer, object, model.materials.at(object.material_index.value())
-        );
-        auto bg2 = obj_object_to_bind_group(
+        auto new_instances = obj_object_to_instance_group(
             renderer, object,
-            textures.at(object.material_index.value()),
-            obj_bind_group_layout
+            bind_group,
+            materials
         );
-        instance_groups.push_back(renderer->create_instance_group({
-            .material = material,
-            .mesh = mesh,
-            .bind_groups = { bind_group, bg2 }
-        }));
+        instance_groups.insert(instance_groups.end(), new_instances.cbegin(), new_instances.cend());
     }
     logger::info() << "Ready !\n";
 
@@ -444,8 +481,8 @@ int main()
     logger::info() << "Creating renderer...\n";
     auto renderer = saltus::Renderer::create({
         .window = window,
-        // .target_present_mode = saltus::RendererPresentMode::VSync,
-        .target_present_mode = saltus::RendererPresentMode::Immediate,
+        .target_present_mode = saltus::RendererPresentMode::VSync,
+        // .target_present_mode = saltus::RendererPresentMode::Immediate,
     });
     logger::info() << "Renderer presentaition mode: " << renderer->current_present_mode() << "\n";
     logger::info() << "Creating rendering data...\n";

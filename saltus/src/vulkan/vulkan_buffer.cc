@@ -71,7 +71,6 @@ namespace saltus::vulkan
         }
         else
         {
-
             RawVulkanBuffer staging_buffer{
                 device_, actual_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT
             };

@@ -24,6 +24,12 @@ namespace saltus::loaders::obj
         int illum;
     };
 
+    struct VertexGroup
+    {
+        std::vector<uint32_t> indices;
+        std::optional<size_t> material_index;
+    };
+
     struct Object
     {
         std::optional<std::string> name;
@@ -32,9 +38,7 @@ namespace saltus::loaders::obj
         std::vector<matrix::Vector3F> normals;
         std::vector<matrix::Vector3F> colors;
 
-        std::vector<uint32_t> indices;
-
-        std::optional<size_t> material_index;
+        std::vector<VertexGroup> groups;
     };
 
     struct LoadedObj
