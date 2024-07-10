@@ -1,5 +1,6 @@
 #include "saltus/vulkan/raw_vulkan_buffer.hh"
 #include <vulkan/vulkan_core.h>
+#include "saltus/vulkan/raw_command_buffer.hh"
 
 namespace saltus::vulkan
 {
@@ -99,5 +100,43 @@ namespace saltus::vulkan
             throw std::runtime_error("Cannot unmap non allocated buffer");
 
         vkUnmapMemory(*device_, memory_);
+    }
+
+    void RawVulkanBuffer::copy(
+        RawVulkanBuffer &src_buffer,
+        VkDeviceSize src_offset,
+        VkDeviceSize dst_offset,
+        VkDeviceSize size,
+        bool wait
+    ) {
+        if (src_offset > src_buffer.size())
+            throw std::range_error("src offset is too big");
+        if (dst_offset > size_)
+            throw std::range_error("dst offset is too big");
+        if (size == VK_WHOLE_SIZE)
+            size = std::min(src_buffer.size() - src_offset, size_ - dst_offset);
+
+        RawCommandBuffer rcb(device_);
+        rcb.begin();
+
+        VkBufferCopy copy{};
+        copy.srcOffset = src_offset;
+        copy.dstOffset = dst_offset;
+        copy.size = size;
+
+        vkCmdCopyBuffer(
+            rcb.handle(), src_buffer.buffer_handle(), buffer_,
+            1, &copy
+        );
+
+        if (wait)
+        {
+            RawVulkanFence fence(device_);
+            rcb.end_and_submit(device_->graphics_queue(), &fence);
+            fence.wait();
+        }
+        else {
+            rcb.end_and_submit(device_->graphics_queue());
+        }
     }
 } // namespace saltus::vulkan

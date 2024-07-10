@@ -74,26 +74,28 @@ load_material_texture(
 ) {
     std::string texpath = material.diffuse_map.empty() ? "assets/default.tga" : material.diffuse_map;
 
-    logger::info() << "Loading texture " << texpath << "\n";
+    logger::debug() << "Loading texture " << texpath << "\n";
     auto tgaimage =
         saltus::loaders::tga::load_tga_image(texpath);
-    logger::info() << "Read! " << tgaimage.width << "x" << tgaimage.height << "\n";
+    logger::debug() << "Read! " << tgaimage.width << "x" << tgaimage.height << " @ " << tgaimage.bytesPerPixel << "\n";
 
     std::vector<uint8_t> new_pixels;
-    new_pixels.resize(tgaimage.width*tgaimage.height*4);
-    for (size_t i = 0; i < tgaimage.width*tgaimage.height; i++)
+    new_pixels.resize(tgaimage.width*tgaimage.height*4, 255);
+    if (tgaimage.bytesPerPixel != 4)
     {
-        for (size_t j = 0; j < 4; j++)
+        for (size_t i = 0; i < tgaimage.width*tgaimage.height; i++)
         {
-            new_pixels[i * 4 + j] = 255;
-        }
-        for (size_t j = 0; j < tgaimage.bytesPerPixel; j++)
-        {
-            new_pixels[i * 4 + j] =
-                tgaimage.data[i * tgaimage.bytesPerPixel + j];
+            memcpy(
+                new_pixels.data() + i * 4,
+                tgaimage.data.data() + i * tgaimage.bytesPerPixel,
+                tgaimage.bytesPerPixel
+            );
         }
     }
-    logger::info() << "Loaded! " << tgaimage.width << "x" << tgaimage.height << "\n";
+    else {
+        memcpy(new_pixels.data(), tgaimage.data.data(), tgaimage.data.size());
+    }
+    logger::debug() << "Converted!\n";
     auto image = renderer->create_image({
         .width = tgaimage.width,
         .height = tgaimage.height,
@@ -104,11 +106,14 @@ load_material_texture(
         },
         .initial_data = new_pixels.data(),
     });
-    logger::info() << "Uploaded! " << tgaimage.width << "x" << tgaimage.height << "\n";
+    logger::debug() << "Uploaded!\n";
 
     saltus::SamplerCreateInfo sampler_info{};
-    sampler_info.wrap_u = saltus::SamplerWraping::Repeat;
-    sampler_info.wrap_v = saltus::SamplerWraping::Repeat;
+    if (material.diffuse_map.empty())
+    {
+        sampler_info.mag_filter = saltus::SamplerFilter::Nearest;
+        sampler_info.min_filter = saltus::SamplerFilter::Nearest;
+    }
     auto sampler = renderer->create_sampler(sampler_info);
 
     auto texture = renderer->create_texture({
@@ -326,9 +331,11 @@ void render_thread_fn(
         }
     );
     logger::info() << "Finished loading textures\n";
+    logger::info() << "Loading objects...\n";
 
     for (auto &object : model.objects)
     {
+        logger::debug() << "Loading object " << object.name.value_or("") << "\n";
         auto mesh = obj_object_to_mesh(
             renderer, object, model.materials.at(object.material_index.value())
         );
@@ -343,12 +350,14 @@ void render_thread_fn(
             .bind_groups = { bind_group, bg2 }
         }));
     }
+    logger::info() << "Ready !\n";
 
     matrix::Matrix4F mvp_matrix;
 
     auto start_t = std::chrono::high_resolution_clock::now();
     auto last_t = std::chrono::high_resolution_clock::now();
-    auto render = [&]() {
+
+    auto update = [&]() {
         auto microseconds_time = (std::chrono::high_resolution_clock::now() - start_t);
         float time = std::chrono::duration_cast<std::chrono::microseconds>(microseconds_time).count() / 1.e6f;
         uniform_data[16] = time;
@@ -372,6 +381,9 @@ void render_thread_fn(
         memcpy(uniform_data.data(), &mvp_matrix, sizeof(float) * 16);
         
         uniform_buffer->write(reinterpret_cast<uint8_t*>(uniform_data.data()));
+    };
+    auto render = [&]() {
+        update();
 
         logger::debug() << "Rendering...\n";
         renderer->render({
@@ -432,8 +444,8 @@ int main()
     logger::info() << "Creating renderer...\n";
     auto renderer = saltus::Renderer::create({
         .window = window,
-        .target_present_mode = saltus::RendererPresentMode::VSync,
-        // .target_present_mode = saltus::RendererPresentMode::Immediate,
+        // .target_present_mode = saltus::RendererPresentMode::VSync,
+        .target_present_mode = saltus::RendererPresentMode::Immediate,
     });
     logger::info() << "Renderer presentaition mode: " << renderer->current_present_mode() << "\n";
     logger::info() << "Creating rendering data...\n";

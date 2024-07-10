@@ -24,6 +24,14 @@ namespace saltus::vulkan
         void *map(VkDeviceSize offset, VkDeviceSize size);
         void unmap();
 
+        void copy(
+            RawVulkanBuffer &buffer,
+            VkDeviceSize src_offset = 0,
+            VkDeviceSize dst_offset = 0,
+            VkDeviceSize size = VK_WHOLE_SIZE,
+            bool wait = true
+        );
+
     private:
         std::shared_ptr<VulkanDevice> device_;
 

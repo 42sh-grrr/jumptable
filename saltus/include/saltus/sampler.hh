@@ -24,9 +24,9 @@ namespace saltus
 
         SamplerFilter mipmap_mode = SamplerFilter::Linear;
 
-        SamplerWraping wrap_u = SamplerWraping::ClampToEdge;
-        SamplerWraping wrap_v = SamplerWraping::ClampToEdge;
-        SamplerWraping wrap_w = SamplerWraping::ClampToEdge;
+        SamplerWraping wrap_u = SamplerWraping::Repeat;
+        SamplerWraping wrap_v = SamplerWraping::Repeat;
+        SamplerWraping wrap_w = SamplerWraping::Repeat;
 
         bool anisotropic_filtering = true;
 

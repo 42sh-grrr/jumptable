@@ -16,6 +16,8 @@ namespace saltus::vulkan
         );
         ~VulkanBuffer();
 
+        bool dynamic() const;
+
         RawVulkanBuffer &raw_buffer();
         const RawVulkanBuffer &raw_buffer() const;
 
@@ -29,5 +31,7 @@ namespace saltus::vulkan
         std::shared_ptr<VulkanDevice> device_;
 
         std::unique_ptr<RawVulkanBuffer> raw_buffer_;
+
+        void *mapped_ = nullptr;
     };
 }
