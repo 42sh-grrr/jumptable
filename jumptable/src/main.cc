@@ -35,6 +35,8 @@
 #include "saltus/loaders/tga_loader.hh"
 #include "saltus/sampler.hh"
 
+using namespace std::chrono_literals;
+
 static std::vector<char> read_full_file(const std::string& filename)
 {
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
@@ -74,6 +76,15 @@ struct Material
 {
     std::shared_ptr<saltus::Material> saltus_material;
     std::shared_ptr<saltus::BindGroup> bind_group;
+};
+
+struct UniformData
+{
+    matrix::Matrix4F mvp;
+    float time;
+    float padding1[3];
+    // In shader this is a vector3 but it will have a float of padding anyways
+    matrix::Vector4F light_direction;
 };
 
 std::unique_ptr<Material>
@@ -302,20 +313,12 @@ void render_thread_fn(
         }
     });
 
-    std::vector<float> uniform_data = {
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f,
-
-        // time
-        0.0f,
-    };
+    UniformData uniform_data = {};
     auto uniform_buffer = renderer->create_buffer({
         .usages = saltus::BufferUsages{}.with_uniform(),
         .access_hint = saltus::BufferAccessHint::Dynamic,
-        .size = uniform_data.size() * sizeof(float),
-        .data = reinterpret_cast<uint8_t*>(uniform_data.data()),
+        .size = sizeof(uniform_data),
+        .data = reinterpret_cast<uint8_t*>(&uniform_data),
     });
 
     bind_group->set_binding(0, uniform_buffer);
@@ -387,13 +390,20 @@ void render_thread_fn(
 
     matrix::Matrix4F mvp_matrix;
 
+    int frame_counter = 0;
     auto start_t = std::chrono::high_resolution_clock::now();
     auto last_t = std::chrono::high_resolution_clock::now();
+    auto last_print = std::chrono::high_resolution_clock::now();
+    auto print_interval = 1s;
 
     auto update = [&]() {
+        frame_counter++;
+
         auto microseconds_time = (std::chrono::high_resolution_clock::now() - start_t);
         float time = std::chrono::duration_cast<std::chrono::microseconds>(microseconds_time).count() / 1.e6f;
-        uniform_data[16] = time;
+        uniform_data.time = time;
+
+        auto rotation = math::transformation::rotate3Dy(time / 2.f);
 
         auto buffsize = renderer->framebuffer_size();
         float ar = static_cast<float>(buffsize.x()) / buffsize.y();
@@ -408,31 +418,46 @@ void render_thread_fn(
             // 0.f, 0.f, (std::sin(time / 2.f) + 1.f) / 4.f
             // 0.f, 0.f, 0.5f
         );
-        mvp_matrix *= math::transformation::rotate3Dy(time / 2.f);
+        mvp_matrix *= rotation;
         mvp_matrix *= math::transformation::scale3D(
             1.f, -1.f, 1.f
         );
         mvp_matrix = mvp_matrix.transpose();
 
-        memcpy(uniform_data.data(), &mvp_matrix, sizeof(float) * 16);
+        uniform_data.mvp = mvp_matrix;
+
+        matrix::Vector4F light_dir{{1.f, 1.f, 1.f, 1.f}};
+        // light_dir = rotation * light_dir;
+        float length = std::sqrt(
+            light_dir.x()*light_dir.x()+
+            light_dir.y()*light_dir.y()+
+            light_dir.z()*light_dir.z()
+        );
+        light_dir.x() /= length;
+        light_dir.y() /= length;
+        light_dir.z() /= length;
+        uniform_data.light_direction = light_dir;
         
-        uniform_buffer->write(reinterpret_cast<uint8_t*>(uniform_data.data()));
+        uniform_buffer->write(reinterpret_cast<uint8_t*>(&uniform_data));
     };
     auto render = [&]() {
         update();
 
-        logger::debug() << "Rendering...\n";
         renderer->render({
             .instance_groups = instance_groups,
             .clear_color = matrix::Vector4F{{ 0., 0., 0., 1. }},
         });
-        logger::debug() << "Finished rendering !\n";
         auto elapsed = std::chrono::high_resolution_clock::now() - last_t;
         auto micros = std::chrono::duration_cast<std::chrono::microseconds>(elapsed);
-        logger::debug() << "Elapsed: " << micros << " (" << std::setprecision(2) << std::fixed << (1.e6 / micros.count()) << ") fps\n";
 
         last_t = std::chrono::high_resolution_clock::now();
         shared_data->events.send(RenderFinishedEvent {});
+
+        if (std::chrono::high_resolution_clock::now() - last_print > print_interval)
+        {
+            logger::info() << "Frame " << frame_counter << " took " << micros << " (" << std::setprecision(2) << std::fixed << (1.e6 / micros.count()) << " fps)\n";
+            last_print = std::chrono::high_resolution_clock::now();
+        }
     };
 
     while (true)
@@ -475,7 +500,7 @@ int main()
 {
     logger::info() << "Creating window...\n";
     auto window = saltus::WindowBuilder()
-        .title("bite")
+        .title("jumptable")
         .build();
     logger::info() << "Creating renderer...\n";
     auto renderer = saltus::Renderer::create({

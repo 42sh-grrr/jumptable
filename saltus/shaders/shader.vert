@@ -12,6 +12,7 @@ layout(location = 2) out vec2 v_uv;
 layout(binding = 0) uniform Ubo {
     mat4 mvp;
     float time;
+    vec3 light_direction;
 } uniforms;
 
 void main() {
