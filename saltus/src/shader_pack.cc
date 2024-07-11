@@ -1,15 +1,15 @@
-#include "saltus/material.hh"
+#include "saltus/shader_pack.hh"
 #include <stdexcept>
 
 namespace saltus
 {
-    MaterialCreateInfo::MaterialCreateInfo()
+    ShaderPackCreateInfo::ShaderPackCreateInfo()
     {
         // zero value is already a good default
         // this constructor is only to prevent struct literal instantiation
     }
 
-    Material::Material(MaterialCreateInfo create_info):
+    ShaderPack::ShaderPack(ShaderPackCreateInfo create_info):
         bind_group_layouts_(create_info.bind_group_layouts),
         vertex_attributes_(create_info.vertex_attributes),
         vertex_shader_(create_info.vertex_shader),
@@ -19,45 +19,45 @@ namespace saltus
         primitive_topology_(create_info.primitive_topology)
     {
         if (!create_info.vertex_shader)
-            throw std::runtime_error("Vertex shader of material cannot be null");
+            throw std::runtime_error("Vertex shader of shader pack cannot be null");
         if (!create_info.fragment_shader)
-            throw std::runtime_error("Vertex shader of material cannot be null");
+            throw std::runtime_error("Vertex shader of shader pack cannot be null");
     }
 
-    Material::~Material()
+    ShaderPack::~ShaderPack()
     { }
 
-    const std::vector<std::shared_ptr<BindGroupLayout>> &Material::bind_group_layouts() const
+    const std::vector<std::shared_ptr<BindGroupLayout>> &ShaderPack::bind_group_layouts() const
     {
         return bind_group_layouts_;
     }
 
-    const std::vector<MaterialVertexAttribute> &Material::vertex_attributes() const
+    const std::vector<ShaderPackVertexAttribute> &ShaderPack::vertex_attributes() const
     {
         return vertex_attributes_;
     }
 
-    const std::shared_ptr<Shader> &Material::vertex_shader() const
+    const std::shared_ptr<Shader> &ShaderPack::vertex_shader() const
     {
         return vertex_shader_;
     }
 
-    const std::shared_ptr<Shader> &Material::fragment_shader() const
+    const std::shared_ptr<Shader> &ShaderPack::fragment_shader() const
     {
         return fragment_shader_;
     }
 
-    MaterialFrontFace Material::front_face() const
+    ShaderPackFrontFace ShaderPack::front_face() const
     {
         return front_face_;
     }
 
-    MaterialCullMode Material::cull_mode() const
+    ShaderPackCullMode ShaderPack::cull_mode() const
     {
         return cull_mode_;
     }
 
-    PritmitiveTopology Material::primitive_topology() const
+    PritmitiveTopology ShaderPack::primitive_topology() const
     {
         return primitive_topology_;
     }

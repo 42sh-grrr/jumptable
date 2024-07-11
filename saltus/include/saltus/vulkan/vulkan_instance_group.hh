@@ -3,7 +3,7 @@
 #include <vulkan/vulkan_core.h>
 #include "saltus/instance_group.hh"
 #include "saltus/vulkan/vulkan_bind_group.hh"
-#include "saltus/vulkan/vulkan_material.hh"
+#include "saltus/vulkan/vulkan_shader_pack.hh"
 #include "saltus/vulkan/vulkan_mesh.hh"
 #include "saltus/vulkan/vulkan_render_target.hh"
 
@@ -20,7 +20,7 @@ namespace saltus::vulkan
 
         const std::shared_ptr<VulkanRenderTarget> &render_target() const;
 
-        const std::shared_ptr<VulkanMaterial> &material() const;
+        const std::shared_ptr<VulkanShaderPack> &shader_pack() const;
         const std::shared_ptr<VulkanMesh> &mesh() const;
         const std::vector<std::shared_ptr<VulkanBindGroup>> &bind_groups() const;
 
@@ -32,7 +32,7 @@ namespace saltus::vulkan
     private:
         std::shared_ptr<VulkanRenderTarget> render_target_;
 
-        std::shared_ptr<VulkanMaterial> material_;
+        std::shared_ptr<VulkanShaderPack> shader_pack_;
         std::shared_ptr<VulkanMesh> mesh_;
         std::vector<std::shared_ptr<VulkanBindGroup>> bind_groups_;
 

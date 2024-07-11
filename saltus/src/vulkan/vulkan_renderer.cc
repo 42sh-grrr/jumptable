@@ -15,7 +15,7 @@
 #include "saltus/vulkan/config.hh"
 #include "saltus/vulkan/vulkan_bind_group_layout.hh"
 #include "saltus/vulkan/vulkan_bind_group.hh"
-#include "saltus/vulkan/vulkan_material.hh"
+#include "saltus/vulkan/vulkan_shader_pack.hh"
 #include "saltus/vulkan/vulkan_mesh.hh"
 #include "saltus/vulkan/vulkan_render_target.hh"
 #include "saltus/vulkan/vulkan_instance_group.hh"
@@ -177,9 +177,9 @@ namespace saltus::vulkan
         return std::make_shared<VulkanShader>(device_, info);
     }
 
-    std::shared_ptr<Material> VulkanRenderer::create_material(MaterialCreateInfo info)
+    std::shared_ptr<ShaderPack> VulkanRenderer::create_shader_pack(ShaderPackCreateInfo info)
     {
-        return std::make_shared<VulkanMaterial>(device_, info);
+        return std::make_shared<VulkanShaderPack>(device_, info);
     }
 
     std::shared_ptr<Mesh> VulkanRenderer::create_mesh(MeshCreateInfo info)

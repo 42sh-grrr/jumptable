@@ -14,7 +14,7 @@
 #include <saltus/window.hh>
 #include <saltus/window_events.hh>
 #include <saltus/renderer.hh>
-#include <saltus/material.hh>
+#include <saltus/shader_pack.hh>
 #include <stdexcept>
 #include <thread>
 #include <unistd.h>
@@ -74,7 +74,7 @@ struct SharedData
 
 struct Material
 {
-    std::shared_ptr<saltus::Material> saltus_material;
+    std::shared_ptr<saltus::ShaderPack> shader_pack;
     std::shared_ptr<saltus::BindGroup> bind_group;
 };
 
@@ -91,7 +91,7 @@ std::unique_ptr<Material>
 obj_material_to_material(
     saltus::Renderer *renderer,
     saltus::loaders::obj::Material &obj_material,
-    std::shared_ptr<saltus::Material> &saltus_material,
+    std::shared_ptr<saltus::ShaderPack> &shader_pack,
     std::shared_ptr<saltus::BindGroupLayout> &layout
 ) {
     std::string texpath = obj_material.diffuse_map.empty() ? "assets/default.tga" : obj_material.diffuse_map;
@@ -153,7 +153,7 @@ obj_material_to_material(
     bind_group->set_binding(0, texture);
 
     std::unique_ptr<Material> material = std::make_unique<Material>();
-    material->saltus_material = saltus_material;
+    material->shader_pack = shader_pack;
     material->bind_group = bind_group;
     return material;
 }
@@ -268,7 +268,7 @@ obj_object_to_instance_group(
         auto &material = materials.at(group.material_index.value());
 
         auto ig = renderer->create_instance_group({
-            .material = material->saltus_material,
+            .shader_pack = material->shader_pack,
             .mesh = saltus_mesh,
             .bind_groups = { global_bind_group, material->bind_group },
         });
@@ -325,11 +325,11 @@ void render_thread_fn(
 
     std::vector<std::shared_ptr<saltus::InstanceGroup>> instance_groups;
 
-    saltus::MaterialCreateInfo material_info{};
+    saltus::ShaderPackCreateInfo material_info{};
     material_info.bind_group_layouts.push_back(bind_group_layout);
     material_info.bind_group_layouts.push_back(obj_bind_group_layout);
     material_info.primitive_topology = saltus::PritmitiveTopology::TriangleList;
-    material_info.cull_mode = saltus::MaterialCullMode::None;
+    material_info.cull_mode = saltus::ShaderPackCullMode::None;
     material_info.vertex_shader = renderer->create_shader({
         .kind = saltus::ShaderKind::Vertex,
         .source_code = read_full_file("build/saltus/shaders/shader.vert.spv"),
@@ -358,7 +358,7 @@ void render_thread_fn(
         .name = "uvs",
         .type = saltus::VertexAttributeType::Vec2f,
     });
-    auto saltus_material = renderer->create_material(material_info);
+    auto shader_pack = renderer->create_shader_pack(material_info);
 
     logger::info() << "Loading textures...\n";
     std::vector<std::unique_ptr<Material>> materials;
@@ -369,7 +369,7 @@ void render_thread_fn(
         [&](auto &obj_material){
             return obj_material_to_material(
                 renderer, obj_material,
-                saltus_material, obj_bind_group_layout
+                shader_pack, obj_bind_group_layout
             );
         }
     );

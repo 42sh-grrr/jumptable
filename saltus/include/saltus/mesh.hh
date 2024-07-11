@@ -27,7 +27,7 @@ namespace saltus
     {
         uint32_t vertex_count;
         std::vector<MeshVertexAttribute> vertex_attributes;
-        /// Flips which faces are conridered front face from the material
+        /// Flips which faces are considered front face from the shader pack
         bool flip_faces;
         PritmitiveTopology primitive_topology;
 

@@ -3,12 +3,12 @@
 #include <memory>
 #include "saltus/bind_group.hh"
 #include "saltus/mesh.hh"
-#include "saltus/material.hh"
+#include "saltus/shader_pack.hh"
 
 namespace saltus
 {
     struct InstanceGroupCreateInfo {
-        std::shared_ptr<Material> material;
+        std::shared_ptr<ShaderPack> shader_pack;
         std::shared_ptr<Mesh> mesh;
         std::vector<std::shared_ptr<BindGroup>> bind_groups;
     };
@@ -20,7 +20,7 @@ namespace saltus
         InstanceGroup(const InstanceGroup &x) = delete;
         const InstanceGroup &operator =(const InstanceGroup &x) = delete;
 
-        const std::shared_ptr<Material> &material() const;
+        const std::shared_ptr<ShaderPack> &shader_pack() const;
         const std::shared_ptr<Mesh> &mesh() const;
         const std::vector<std::shared_ptr<BindGroup>> &bind_groups() const;
         
@@ -28,7 +28,7 @@ namespace saltus
         InstanceGroup(InstanceGroupCreateInfo info);
 
     private:
-        std::shared_ptr<Material> material_;
+        std::shared_ptr<ShaderPack> shader_pack__;
         std::shared_ptr<Mesh> mesh_;
         std::vector<std::shared_ptr<BindGroup>> bind_groups_;
     };

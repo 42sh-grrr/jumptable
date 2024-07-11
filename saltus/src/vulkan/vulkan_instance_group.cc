@@ -5,7 +5,7 @@
 #include <vulkan/vulkan_core.h>
 #include "saltus/vulkan/vulkan_instance_group.hh"
 #include "saltus/vertex_attribute.hh"
-#include "saltus/vulkan/vulkan_material.hh"
+#include "saltus/vulkan/vulkan_shader_pack.hh"
 
 namespace saltus::vulkan
 {
@@ -152,9 +152,9 @@ namespace saltus::vulkan
         std::shared_ptr<VulkanRenderTarget> render_target,
         InstanceGroupCreateInfo create_info
     ): InstanceGroup(create_info), render_target_(render_target) {
-        material_ = std::dynamic_pointer_cast<VulkanMaterial>(create_info.material);
-        if (!material_)
-            throw std::runtime_error("Can only create vulkan instance group with a vulkan material");
+        shader_pack_ = std::dynamic_pointer_cast<VulkanShaderPack>(create_info.shader_pack);
+        if (!shader_pack_)
+            throw std::runtime_error("Can only create vulkan instance group with a vulkan shader_pack");
         mesh_ = std::dynamic_pointer_cast<VulkanMesh>(create_info.mesh);
         if (!mesh_)
             throw std::runtime_error("Can only create vulkan instance group with a vulkan mesh");
@@ -183,9 +183,9 @@ namespace saltus::vulkan
         return render_target_;
     }
 
-    const std::shared_ptr<VulkanMaterial> &VulkanInstanceGroup::material() const
+    const std::shared_ptr<VulkanShaderPack> &VulkanInstanceGroup::shader_pack() const
     {
-        return material_;
+        return shader_pack_;
     }
 
     const std::shared_ptr<VulkanMesh> &VulkanInstanceGroup::mesh() const
@@ -269,7 +269,7 @@ namespace saltus::vulkan
 
         std::vector<VkDescriptorSetLayout> descriptor_set_layouts;
         std::ranges::transform(
-            material_->bind_group_layouts(),
+            shader_pack_->bind_group_layouts(),
             std::back_insert_iterator(descriptor_set_layouts),
             [](const auto &l){ return l->layout(); }
         );
@@ -287,8 +287,8 @@ namespace saltus::vulkan
     {
         const auto device = render_target_->device();
 
-        auto vert_shader_stage_info = material_->vertex_shader()->stage_create_info();
-        auto frag_shader_stage_info = material_->fragment_shader()->stage_create_info();
+        auto vert_shader_stage_info = shader_pack_->vertex_shader()->stage_create_info();
+        auto frag_shader_stage_info = shader_pack_->fragment_shader()->stage_create_info();
 
         VkPipelineShaderStageCreateInfo shader_stages[] = {
             vert_shader_stage_info,
@@ -314,27 +314,27 @@ namespace saltus::vulkan
         vertex_offsets_.clear();
         for (size_t mesh_attr_i = 0; mesh_attr_i < mesh_->vertex_attributes().size(); mesh_attr_i++)
         {
-            const MaterialVertexAttribute *material_attr = nullptr;
-            for (const auto &attr : material_->vertex_attributes())
+            const ShaderPackVertexAttribute *shader_pack_attr = nullptr;
+            for (const auto &attr : shader_pack_->vertex_attributes())
             {
                 if (attr.name == mesh_->vertex_attributes()[mesh_attr_i].name)
-                    material_attr = &attr;
+                    shader_pack_attr = &attr;
             }
-            if (!material_attr)
+            if (!shader_pack_attr)
                 continue;
             uint32_t binding_i = vertex_buffers_.size();
 
             VkVertexInputBindingDescription binding{};
             binding.binding = binding_i;
             binding.inputRate = VkVertexInputRate::VK_VERTEX_INPUT_RATE_VERTEX;
-            binding.stride = material_attr->type.size();
+            binding.stride = shader_pack_attr->type.size();
             bindings.push_back(binding);
 
             VkVertexInputAttributeDescription attr{};
             attr.binding = binding_i;
-            attr.location = material_attr->location;
+            attr.location = shader_pack_attr->location;
             attr.offset = 0;
-            attr.format = attribute_type_to_vulkan_format(material_attr->type);
+            attr.format = attribute_type_to_vulkan_format(shader_pack_attr->type);
             attrs.push_back(attr);
 
             vertex_buffers_.push_back(mesh_->vertex_buffers()[mesh_attr_i]->raw_buffer());
@@ -347,7 +347,7 @@ namespace saltus::vulkan
 
         VkPipelineInputAssemblyStateCreateInfo input_assembly{};
         input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        switch (material_->primitive_topology())
+        switch (shader_pack_->primitive_topology())
         {
         case PritmitiveTopology::TriangleList:
             input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -374,30 +374,30 @@ namespace saltus::vulkan
         rasterizer.rasterizerDiscardEnable = VK_FALSE;
         rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
         rasterizer.lineWidth = 1.0f;
-        switch (material_->cull_mode())
+        switch (shader_pack_->cull_mode())
         {
-        case MaterialCullMode::None:
+        case ShaderPackCullMode::None:
             rasterizer.cullMode = VK_CULL_MODE_NONE;
             break;
-        case MaterialCullMode::Back:
+        case ShaderPackCullMode::Back:
             rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
             break;
-        case MaterialCullMode::Front:
+        case ShaderPackCullMode::Front:
             rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
             break;
-        case MaterialCullMode::All:
+        case ShaderPackCullMode::All:
             rasterizer.cullMode = VK_CULL_MODE_FRONT_AND_BACK;
             break;
         }
-        switch (material_->front_face())
+        switch (shader_pack_->front_face())
         {
-        case MaterialFrontFace::CounterClockwise:
+        case ShaderPackFrontFace::CounterClockwise:
             if (mesh_->flip_faces())
                 rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
             else
                 rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
             break;
-        case MaterialFrontFace::Clockwise:
+        case ShaderPackFrontFace::Clockwise:
             if (mesh_->flip_faces())
                 rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
             else

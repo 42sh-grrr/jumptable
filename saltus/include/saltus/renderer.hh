@@ -6,7 +6,7 @@
 #include "saltus/bind_group.hh"
 #include "saltus/image.hh"
 #include "saltus/instance_group.hh"
-#include "saltus/material.hh"
+#include "saltus/shader_pack.hh"
 #include "saltus/mesh.hh"
 #include "saltus/sampler.hh"
 #include "saltus/texture.hh"
@@ -71,7 +71,7 @@ namespace saltus
         virtual std::shared_ptr<Sampler> create_sampler(SamplerCreateInfo) = 0;
         virtual std::shared_ptr<Texture> create_texture(TextureCreateInfo) = 0;
         virtual std::shared_ptr<Shader> create_shader(ShaderCreateInfo) = 0;
-        virtual std::shared_ptr<Material> create_material(MaterialCreateInfo) = 0;
+        virtual std::shared_ptr<ShaderPack> create_shader_pack(ShaderPackCreateInfo) = 0;
         virtual std::shared_ptr<Mesh> create_mesh(MeshCreateInfo) = 0;
         virtual std::shared_ptr<BindGroupLayout> create_bind_group_layout(BindGroupLayoutCreateInfo) = 0;
         virtual std::shared_ptr<BindGroup> create_bind_group(BindGroupCreateInfo) = 0;

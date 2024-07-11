@@ -9,7 +9,7 @@
 
 namespace saltus
 {
-    enum class MaterialCullMode: uint8_t
+    enum class ShaderPackCullMode: uint8_t
     {
         /// Show both sides
         None,
@@ -21,63 +21,63 @@ namespace saltus
         All,
     };
 
-    enum class MaterialFrontFace: uint8_t
+    enum class ShaderPackFrontFace: uint8_t
     {
         CounterClockwise,
         Clockwise,
     };
 
-    struct MaterialVertexAttribute
+    struct ShaderPackVertexAttribute
     {
         uint32_t location;
         std::string name;
         VertexAttributeType type;
     };
 
-    struct MaterialCreateInfo
+    struct ShaderPackCreateInfo
     {
         std::vector<std::shared_ptr<BindGroupLayout>> bind_group_layouts;
-        std::vector<MaterialVertexAttribute> vertex_attributes;
+        std::vector<ShaderPackVertexAttribute> vertex_attributes;
 
         std::shared_ptr<Shader> vertex_shader;
         std::shared_ptr<Shader> fragment_shader;
 
-        MaterialFrontFace front_face;
-        MaterialCullMode cull_mode;
+        ShaderPackFrontFace front_face;
+        ShaderPackCullMode cull_mode;
         PritmitiveTopology primitive_topology;
 
-        MaterialCreateInfo();
+        ShaderPackCreateInfo();
     };
 
-    class Material
+    class ShaderPack
     {
     public:
-        virtual ~Material() = 0;
-        Material(const Material &x) = delete;
-        const Material &operator =(const Material &x) = delete;
+        virtual ~ShaderPack() = 0;
+        ShaderPack(const ShaderPack &x) = delete;
+        const ShaderPack &operator =(const ShaderPack &x) = delete;
 
         const std::vector<std::shared_ptr<BindGroupLayout>> &bind_group_layouts() const;
-        const std::vector<MaterialVertexAttribute> &vertex_attributes() const;
+        const std::vector<ShaderPackVertexAttribute> &vertex_attributes() const;
 
         const std::shared_ptr<Shader> &vertex_shader() const;
         const std::shared_ptr<Shader> &fragment_shader() const;
 
-        MaterialFrontFace front_face() const;
-        MaterialCullMode cull_mode() const;
+        ShaderPackFrontFace front_face() const;
+        ShaderPackCullMode cull_mode() const;
         PritmitiveTopology primitive_topology() const;
         
     protected:
-        Material(MaterialCreateInfo create_info);
+        ShaderPack(ShaderPackCreateInfo create_info);
 
     private:
         std::vector<std::shared_ptr<BindGroupLayout>> bind_group_layouts_;
-        std::vector<MaterialVertexAttribute> vertex_attributes_;
+        std::vector<ShaderPackVertexAttribute> vertex_attributes_;
 
         std::shared_ptr<Shader> vertex_shader_;
         std::shared_ptr<Shader> fragment_shader_;
 
-        MaterialFrontFace front_face_;
-        MaterialCullMode cull_mode_;
+        ShaderPackFrontFace front_face_;
+        ShaderPackCullMode cull_mode_;
         PritmitiveTopology primitive_topology_;
     };
 } // namespace saltus
