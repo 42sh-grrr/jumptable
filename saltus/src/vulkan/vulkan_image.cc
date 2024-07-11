@@ -200,12 +200,13 @@ namespace saltus::vulkan
             usage |= VK_IMAGE_USAGE_STORAGE_BIT;
 
         image_ = std::make_unique<RawVulkanImage>(RawVulkanImage::Builder{device}
-            .with_size(info.width, info.height)
+            .with_mip_levels(info.mip_levels)
+            .with_size(info.dimensions)
             .with_usage(usage)
             .with_format(image_format_to_vk_image_format(info.format))
         );
 
-        image_->write(info.initial_data, info.format.bytes_per_pixel() * info.width * info.height);
+        image_->write(info.initial_data, info.format.bytes_per_pixel() * info.dimensions.x() * info.dimensions.y() * info.dimensions.z());
     }
 
     VulkanImage::~VulkanImage() = default;
@@ -222,6 +223,6 @@ namespace saltus::vulkan
 
     void VulkanImage::write(uint8_t *data)
     {
-        image_->write(data, format().bytes_per_pixel() * width() * height());
+        image_->write(data, format().bytes_per_pixel() * dimensions().x() * dimensions().y() * dimensions().z());
     }
 } // namespace saltus::vulkan

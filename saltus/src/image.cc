@@ -1,5 +1,7 @@
 #include "saltus/image.hh"
+#include <cmath>
 #include <stdexcept>
+#include "logger/level.hh"
 
 namespace saltus
 {
@@ -63,26 +65,41 @@ namespace saltus
         }
         return size;
     }
+
+    uint32_t max_image_mip_levels(matrix::Vector3<uint32_t> extent)
+    {
+        float max_mip_levels = std::floor(std::log2(std::max(
+            static_cast<float>(extent.x()),std::max(
+            static_cast<float>(extent.y()),
+            static_cast<float>(extent.z())
+        ))));
+        return static_cast<uint32_t>(max_mip_levels)+1;
+    }
     
-    Image::Image(ImageCreateInfo info):
-        width_(info.width), height_(info.height), usages_(info.usages),
+    Image::Image(ImageCreateInfo &info):
+        dimensions_(info.dimensions),
+        mip_levels_(info.mip_levels),
+        usages_(info.usages),
         format_(info.format)
     {
         if (!info.usages.sampled && !info.usages.storage)
             throw std::runtime_error("Images must have at least one usage");
+
+        auto max_mip_levels = max_image_mip_levels(info.dimensions);
+        if (info.mip_levels > max_mip_levels)
+        {
+            logger::warn() << "Specified mip levels is above maximum (" << info.mip_levels << " > " << max_mip_levels << "), it has been clamped\n";
+            mip_levels_ = max_mip_levels;
+            info.mip_levels = max_mip_levels;
+        }
     }
 
     Image::~Image()
     { }
 
-    const uint32_t &Image::width() const
+    const matrix::Vector3<uint32_t> &Image::dimensions() const
     {
-        return width_;
-    }
-
-    const uint32_t &Image::height() const
-    {
-        return height_;
+        return dimensions_;
     }
 
     const ImageUsages &Image::usages() const

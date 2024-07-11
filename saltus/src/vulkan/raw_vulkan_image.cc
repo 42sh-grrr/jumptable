@@ -29,6 +29,12 @@ namespace saltus::vulkan
         return *this;
     }
 
+    RawVulkanImage::Builder &RawVulkanImage::Builder::with_mip_levels(uint32_t mip_levels_)
+    {
+        mip_levels = mip_levels_;
+        return *this;
+    }
+
     RawVulkanImage::Builder &RawVulkanImage::Builder::with_usage(VkImageUsageFlags usage_)
     {
         usage |= usage_;
@@ -68,8 +74,11 @@ namespace saltus::vulkan
     {
         image_mem_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         image_mem_barrier.image = img;
-        image_mem_barrier.subresourceRange.layerCount = 1;
+        image_mem_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        image_mem_barrier.subresourceRange.baseArrayLayer = 0;
+        image_mem_barrier.subresourceRange.baseMipLevel = 0;
         image_mem_barrier.subresourceRange.levelCount = 1;
+        image_mem_barrier.subresourceRange.layerCount = 1;
     }
 
     BB &BB::with_old_layout(VkImageLayout val)
@@ -146,6 +155,7 @@ namespace saltus::vulkan
     RawVulkanImage::RawVulkanImage(const Builder &builder):
         device_(builder.device),
         size_(builder.size),
+        mip_levels_(builder.mip_levels),
         array_layers_(builder.array_layers),
         image_type_(builder.image_type),
         format_(builder.format)
@@ -156,12 +166,14 @@ namespace saltus::vulkan
         imageInfo.extent.width = size_.x();
         imageInfo.extent.height = size_.y();
         imageInfo.extent.depth = size_.z();
-        imageInfo.mipLevels = 1;
+        imageInfo.mipLevels = builder.mip_levels;
         imageInfo.arrayLayers = builder.array_layers;
         imageInfo.format = builder.format;
         imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageInfo.usage = builder.usage;
+        if (builder.mip_levels > 1)
+            imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 
@@ -209,6 +221,11 @@ namespace saltus::vulkan
         return size_;
     }
 
+    const uint32_t &RawVulkanImage::mip_levels() const
+    {
+        return mip_levels_;
+    }
+
     const uint32_t &RawVulkanImage::array_layers() const
     {
         return array_layers_;
@@ -234,31 +251,35 @@ namespace saltus::vulkan
         return format_;
     }
 
-    void RawVulkanImage::write(uint8_t *data, size_t size)
+    void RawVulkanImage::write(uint8_t *data, size_t size, uint32_t array_index)
     {
         RawVulkanBuffer buffer(device_, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
         buffer.alloc(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
         void *buf = buffer.map(0, VK_WHOLE_SIZE);
         memcpy(buf, data, size);
         buffer.unmap();
-        write(buffer);
+        write(buffer, array_index);
     }
 
-    void RawVulkanImage::write(const RawVulkanBuffer &buffer)
-    {
+    void RawVulkanImage::write(
+        const RawVulkanBuffer &buffer, 
+        uint32_t array_index
+    ) {
         RawCommandBuffer rcb(device_);
         
         rcb.begin();
 
-        RawVulkanImage::BarrierBuilder(*this)
-            .with_old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
-            .with_new_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-            .with_src_access_mask(0)
-            .with_dst_access_mask(VK_ACCESS_TRANSFER_WRITE_BIT)
-            .with_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
-            .with_src_stage_mask(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)
-            .with_dst_stage_mask(VK_PIPELINE_STAGE_TRANSFER_BIT)
-            .build(rcb.handle());
+        for (uint32_t map_index = 0; map_index < mip_levels_; map_index++)
+            RawVulkanImage::BarrierBuilder(*this)
+                .with_old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+                .with_new_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+                .with_src_access_mask(0)
+                .with_dst_access_mask(VK_ACCESS_TRANSFER_WRITE_BIT)
+                .with_src_stage_mask(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)
+                .with_dst_stage_mask(VK_PIPELINE_STAGE_TRANSFER_BIT)
+                .with_base_mip_level(map_index).with_level_count(1)
+                .with_base_array_layer(array_index).with_layer_count(1)
+                .build(rcb.handle());
 
         VkBufferImageCopy region{};
         region.bufferOffset = 0;
@@ -284,14 +305,82 @@ namespace saltus::vulkan
             &region
         );
 
+        matrix::Vector3<uint32_t> previous_mip_size = size_;
+        matrix::Vector3<uint32_t> mip_size = size_;
+        for (uint32_t map_index = 1; map_index < mip_levels_; map_index++)
+        {
+            RawVulkanImage::BarrierBuilder{*this}
+                .with_old_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+                .with_new_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+                .with_src_access_mask(VK_ACCESS_TRANSFER_WRITE_BIT)
+                .with_dst_access_mask(VK_ACCESS_TRANSFER_READ_BIT)
+                .with_src_stage_mask(VK_PIPELINE_STAGE_TRANSFER_BIT)
+                .with_dst_stage_mask(VK_PIPELINE_STAGE_TRANSFER_BIT)
+                .with_base_mip_level(map_index-1).with_level_count(1)
+                .build(rcb.handle());
+
+            previous_mip_size = mip_size;
+            mip_size.x() /= 2;
+            if (mip_size.x() <= 1)
+                mip_size.x() = 1;
+            mip_size.y() /= 2;
+            if (mip_size.y() <= 1)
+                mip_size.y() = 1;
+            mip_size.z() /= 2;
+            if (mip_size.z() <= 1)
+                mip_size.z() = 1;
+
+            VkImageBlit blit{};
+            blit.srcOffsets[0] = { 0, 0, 0 };
+            blit.srcOffsets[1] = {
+                static_cast<int32_t>(previous_mip_size.x()),
+                static_cast<int32_t>(previous_mip_size.y()),
+                static_cast<int32_t>(previous_mip_size.z()),
+            };
+            blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            blit.srcSubresource.mipLevel = map_index - 1;
+            blit.srcSubresource.baseArrayLayer = array_index;
+            blit.srcSubresource.layerCount = 1;
+            blit.dstOffsets[0] = { 0, 0, 0 };
+            blit.dstOffsets[1] = {
+                static_cast<int32_t>(mip_size.x()),
+                static_cast<int32_t>(mip_size.y()),
+                static_cast<int32_t>(mip_size.z()),
+            };
+            blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            blit.dstSubresource.mipLevel = map_index;
+            blit.dstSubresource.baseArrayLayer = array_index;
+            blit.dstSubresource.layerCount = 1;
+
+            vkCmdBlitImage(
+                rcb.handle(),
+                image_, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                image_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                1, &blit,
+                VK_FILTER_LINEAR
+            );
+        }
+
+        for (uint32_t map_index = 0; map_index < mip_levels_-1; map_index++)
+            RawVulkanImage::BarrierBuilder{*this}
+                .with_old_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+                .with_new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .with_src_access_mask(VK_ACCESS_TRANSFER_READ_BIT)
+                .with_dst_access_mask(VK_ACCESS_SHADER_READ_BIT)
+                .with_src_stage_mask(VK_PIPELINE_STAGE_TRANSFER_BIT)
+                .with_dst_stage_mask(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)
+                .with_base_mip_level(map_index).with_level_count(1)
+                .with_base_array_layer(array_index).with_layer_count(1)
+                .build(rcb.handle());
         RawVulkanImage::BarrierBuilder{*this}
             .with_old_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
             .with_new_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-            .with_src_access_mask(VK_ACCESS_TRANSFER_WRITE_BIT)
+            .with_src_access_mask(VK_ACCESS_TRANSFER_READ_BIT)
             .with_dst_access_mask(VK_ACCESS_SHADER_READ_BIT)
-            .with_aspect_mask(VK_IMAGE_ASPECT_COLOR_BIT)
             .with_src_stage_mask(VK_PIPELINE_STAGE_TRANSFER_BIT)
-            .with_dst_stage_mask(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
+            .with_dst_stage_mask(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)
+            .with_base_mip_level(mip_levels_-1).with_level_count(1)
+            .with_base_array_layer(array_index).with_layer_count(1)
             .build(rcb.handle());
 
         RawVulkanFence fence(device_);
