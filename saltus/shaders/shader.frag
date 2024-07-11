@@ -1,20 +1,17 @@
 #version 450
 
-layout(location = 0) in vec3 fragColor;
-layout(location = 1) in vec3 normal;
+layout(location = 0) in vec3 v_frag_olor;
+layout(location = 1) in vec3 v_normal;
 layout(location = 2) in vec2 v_uv;
 
-layout(location = 0) out vec4 outColor;
+layout(location = 0) out vec4 out_color;
 
 layout(set = 0, binding = 0) uniform Ubo {
     mat4 mvp;
     float time;
-} ubo;
+} uniforms;
 layout(set = 1, binding = 0) uniform sampler2D u_tex;
 
 void main() {
-    // outColor = vec4((sin(ubo.time * 1.5 + 0.1) + 1.) / 2., (sin(ubo.time * 2. + 0.5) + 1.) / 2., (sin(ubo.time * 2.5 + 1.) + 1.) / 2., 1.0);
-    // outColor = vec4(v_uv, 0., 1.);
-    outColor = texture(u_tex, v_uv);
-    // outColor = vec4(1.);
+    out_color = texture(u_tex, v_uv);
 }
