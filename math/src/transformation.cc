@@ -23,7 +23,7 @@ namespace math::transformation
         matrix::Matrix4F mat = matrix::identity<float, 4>();
         mat[0][0] = dx;
         mat[1][1] = dy;
-        mat[2][2] = dy;
+        mat[2][2] = dz;
         return mat;
     }
 
@@ -50,7 +50,7 @@ namespace math::transformation
         matrix::Matrix4F mat = matrix::identity<float, 4>();
         mat[0][3] = dx;
         mat[1][3] = dy;
-        mat[2][3] = dy;
+        mat[2][3] = dz;
         return mat;
     }
 
@@ -150,7 +150,7 @@ namespace math::transformation
         matrix::Matrix4D mat = matrix::identity<double, 4>();
         mat[0][0] = dx;
         mat[1][1] = dy;
-        mat[2][2] = dy;
+        mat[2][2] = dz;
         return mat;
     }
 
@@ -177,7 +177,7 @@ namespace math::transformation
         matrix::Matrix4D mat = matrix::identity<double, 4>();
         mat[0][3] = dx;
         mat[1][3] = dy;
-        mat[2][3] = dy;
+        mat[2][3] = dz;
         return mat;
     }
 
