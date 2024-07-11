@@ -1,5 +1,4 @@
 #include "saltus/vulkan/raw_vulkan_image_view.hh"
-#include <iostream>
 #include <vulkan/vulkan_core.h>
 
 namespace saltus::vulkan
@@ -44,7 +43,7 @@ namespace saltus::vulkan
         return format_;
     }
 
-    const VkImageView &RawVulkanImageView::view() const
+    const VkImageView &RawVulkanImageView::handle() const
     {
         return view_;
     }

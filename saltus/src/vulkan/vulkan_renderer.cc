@@ -35,7 +35,9 @@ namespace saltus::vulkan
 
         instance_ = std::make_shared<VulkanInstance>();
         device_ = std::make_shared<VulkanDevice>(info.window, instance_);
-        render_target_ = std::make_shared<VulkanRenderTarget>(frame_ring_, device_, info.target_present_mode);
+        render_target_ = std::make_shared<VulkanRenderTarget>(
+            frame_ring_, device_, info.target_present_mode, info.msaa_samples
+        );
 
         frame_ring_->resize(MAX_FRAMES_IN_FLIGHT);
     }

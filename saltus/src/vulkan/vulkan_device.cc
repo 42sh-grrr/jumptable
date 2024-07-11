@@ -126,6 +126,21 @@ namespace saltus::vulkan
         return physical_device_properties_;
     }
 
+    uint32_t VulkanDevice::max_usable_sample_count() const
+    {
+        uint32_t flags =
+            physical_device_properties_.limits.framebufferColorSampleCounts &
+            physical_device_properties_.limits.framebufferDepthSampleCounts;
+
+        for (uint32_t i = 64; i > 1; i >>= 1)
+        {
+            if (flags & i)
+                return i;
+        }
+
+        return 1;
+    }
+
     QueueFamilyIndices VulkanDevice::get_physical_device_family_indices() const
     {
         if (physical_device_ == nullptr)

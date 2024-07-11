@@ -59,6 +59,12 @@ namespace saltus::vulkan
         return *this;
     }
 
+    RawVulkanImage::Builder &RawVulkanImage::Builder::with_sample_count(VkSampleCountFlagBits newcount)
+    {
+        sample_count = newcount;
+        return *this;
+    }
+
     std::unique_ptr<RawVulkanImage> RawVulkanImage::Builder::build()
     {
         return std::make_unique<RawVulkanImage>(*this);
@@ -74,6 +80,8 @@ namespace saltus::vulkan
     {
         image_mem_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         image_mem_barrier.image = img;
+        image_mem_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        image_mem_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         image_mem_barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         image_mem_barrier.subresourceRange.baseArrayLayer = 0;
         image_mem_barrier.subresourceRange.baseMipLevel = 0;
@@ -175,7 +183,7 @@ namespace saltus::vulkan
         if (builder.mip_levels > 1)
             imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.samples = builder.sample_count;
 
         VkResult result = vkCreateImage(*device_, &imageInfo, nullptr, &image_);
         if (result != VK_SUCCESS)

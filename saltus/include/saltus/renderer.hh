@@ -24,10 +24,22 @@ namespace saltus
     };
     std::ostream& operator <<(std::ostream& outs, RendererPresentMode present_mode);
 
+    enum class MsaaSamples: uint32_t
+    {
+        Sample1 = 1,
+        Sample2 = 2,
+        Sample4 = 4,
+        Sample8 = 8,
+        Sample16 = 16,
+        Sample32 = 32,
+        Sample64 = 64,
+    };
+
     struct RendererCreateInfo
     {
         Window &window;
         RendererPresentMode target_present_mode;
+        MsaaSamples msaa_samples;
     };
 
     struct RenderInfo

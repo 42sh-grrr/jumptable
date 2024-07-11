@@ -404,6 +404,7 @@ void render_thread_fn(
         );
         mvp_matrix *= math::transformation::translate3D(
             0.f, 0.5f, 0.f
+            // 0.f, 0.5f, (std::sin(time / 2.f) + 1.f) / 4.f
             // 0.f, 0.f, (std::sin(time / 2.f) + 1.f) / 4.f
             // 0.f, 0.f, 0.5f
         );
@@ -481,6 +482,7 @@ int main()
         .window = window,
         .target_present_mode = saltus::RendererPresentMode::VSync,
         // .target_present_mode = saltus::RendererPresentMode::Immediate,
+        .msaa_samples = saltus::MsaaSamples::Sample64,
     });
     logger::info() << "Renderer presentaition mode: " << renderer->current_present_mode() << "\n";
     logger::info() << "Creating rendering data...\n";

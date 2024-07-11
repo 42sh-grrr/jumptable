@@ -51,40 +51,50 @@ namespace saltus::vulkan
         throw std::runtime_error("Unknown present mode");
     }
 
-    VulkanRenderTarget::DepthBuffer::DepthBuffer(
-        std::shared_ptr<VulkanRenderTarget> render_target, uint32_t
-    ): render_target_(render_target) {
-        VkFormat format = render_target->depth_format();
+    VulkanRenderTarget::RenderBuffer::RenderBuffer(
+        std::shared_ptr<VulkanRenderTarget> render_target,
+        uint32_t,
+        bool is_depth
+    ): render_target_(render_target), is_depth_(is_depth) {
+        VkFormat format = is_depth
+            ? render_target->depth_format()
+            : render_target->swapchain_image_format();
 
         auto extent = render_target->swapchain_extent();
         image_ = std::make_shared<RawVulkanImage>(
             RawVulkanImage::Builder(render_target->device())
                 .with_format(format)
-                .with_usage(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+                .with_usage(is_depth ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
                 .with_size(extent.width, extent.height)
+                .with_sample_count(static_cast<VkSampleCountFlagBits>(render_target->msaa_samples_))
         );
 
         image_view_ = std::make_shared<RawVulkanImageView>(
             image_,
             format,
             VK_IMAGE_VIEW_TYPE_2D,
-            VK_IMAGE_ASPECT_DEPTH_BIT
+            is_depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT
         );
     }
 
-    VulkanRenderTarget::DepthBuffer::~DepthBuffer() = default;
+    VulkanRenderTarget::RenderBuffer::~RenderBuffer() = default;
 
-    const std::shared_ptr<VulkanRenderTarget> &VulkanRenderTarget::DepthBuffer::render_target() const
+    const std::shared_ptr<VulkanRenderTarget> &VulkanRenderTarget::RenderBuffer::render_target() const
     {
         return render_target_;
     }
+
+    bool VulkanRenderTarget::RenderBuffer::is_depth() const
+    {
+        return is_depth_;
+    }
    
-    const std::shared_ptr<RawVulkanImage> &VulkanRenderTarget::DepthBuffer::image() const
+    const std::shared_ptr<RawVulkanImage> &VulkanRenderTarget::RenderBuffer::image() const
     {
         return image_;
     }
 
-    const std::shared_ptr<RawVulkanImageView> &VulkanRenderTarget::DepthBuffer::image_view() const
+    const std::shared_ptr<RawVulkanImageView> &VulkanRenderTarget::RenderBuffer::image_view() const
     {
         return image_view_;
     }
@@ -92,17 +102,20 @@ namespace saltus::vulkan
     VulkanRenderTarget::VulkanRenderTarget(
         std::shared_ptr<FrameRing> frame_ring,
         std::shared_ptr<VulkanDevice> device,
-        RendererPresentMode target_present_mode
+        RendererPresentMode target_present_mode,
+        MsaaSamples msaa_samples
     ):
         frame_ring_(frame_ring),
         device_(device),
         target_present_mode_(target_present_mode),
-        depth_resource_(frame_ring->allocate_resource<DepthBuffer>(
+        depth_resource_(frame_ring->allocate_resource<RenderBuffer>(
             [this](uint32_t fi){
-                return std::make_unique<DepthBuffer>(this->shared_from_this(), fi);
+                return std::make_unique<RenderBuffer>(this->shared_from_this(), fi, true);
             }
         ))
     {
+        msaa_samples_ = static_cast<uint32_t>(msaa_samples);
+
         create();
     }
 
@@ -125,6 +138,11 @@ namespace saltus::vulkan
     {
         target_present_mode_ = present_mode;
         recreate();
+    }
+
+    VkSampleCountFlagBits VulkanRenderTarget::msaa_sample_bits() const
+    {
+        return static_cast<VkSampleCountFlagBits>(msaa_samples_);
     }
 
     const VkFormat &VulkanRenderTarget::swapchain_image_format() const
@@ -156,7 +174,7 @@ namespace saltus::vulkan
     {
         return depth_format_;
     }
-    const FrameResource<VulkanRenderTarget::DepthBuffer> &VulkanRenderTarget::depth_resource() const
+    const FrameResource<VulkanRenderTarget::RenderBuffer> &VulkanRenderTarget::depth_resource() const
     {
         return depth_resource_;
     }
@@ -240,6 +258,22 @@ namespace saltus::vulkan
         create_images();
         create_image_views();
 
+        uint32_t max_samples = device_->max_usable_sample_count();
+        if (msaa_samples_ > max_samples)
+        {
+            logger::warn() << "Could not use target msaa samples: " << msaa_samples_ << " is above hardware maximum (" << max_samples << "), it has been clamped\n";
+            msaa_samples_ = max_samples;
+        }
+
+        if (msaa_samples_ > 1)
+        {
+            backbuffer_resource_ = frame_ring_->allocate_resource<RenderBuffer>(
+                [this](uint32_t fi){
+                    return std::make_unique<RenderBuffer>(this->shared_from_this(), fi, false);
+                }
+            );
+        }
+
         // TODO: Choose an otherone if not available
         depth_format_ = VK_FORMAT_D32_SFLOAT;
     }
@@ -263,6 +297,30 @@ namespace saltus::vulkan
         if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw std::runtime_error("Could not acquire an image");
         return index;
+    }
+
+    VkImage VulkanRenderTarget::get_render_image(uint32_t acquired_image, uint32_t frame_index)
+    {
+        if (backbuffer_resource_.has_value())
+            return backbuffer_resource_.value().get(frame_index).image()->handle();
+        return get_present_image(acquired_image, frame_index);
+    }
+
+    VkImageView VulkanRenderTarget::get_render_image_view(uint32_t acquired_image, uint32_t frame_index)
+    {
+        if (backbuffer_resource_.has_value())
+            return backbuffer_resource_.value().get(frame_index).image_view()->handle();
+        return get_present_image_view(acquired_image, frame_index);
+    }
+
+    VkImage VulkanRenderTarget::get_present_image(uint32_t acquired_image, uint32_t)
+    {
+        return swapchain_images_[acquired_image];
+    }
+
+    VkImageView VulkanRenderTarget::get_present_image_view(uint32_t acquired_image, uint32_t)
+    {
+        return swapchain_image_views_[acquired_image];
     }
 
     void VulkanRenderTarget::create_swap_chain()
@@ -377,6 +435,8 @@ namespace saltus::vulkan
         destroy_swap_chain();
         swapchain_images_.clear();
         swapchain_ = VK_NULL_HANDLE;
+
+        backbuffer_resource_ = std::nullopt;
 
         depth_resource_.clear();
     }

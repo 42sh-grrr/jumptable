@@ -1,6 +1,5 @@
 #include "saltus/vulkan/vulkan_bind_group.hh"
 #include <cassert>
-#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
@@ -132,7 +131,7 @@ namespace saltus::vulkan
 
         VkDescriptorImageInfo img_info {
             .sampler = vkTex->sampler()->handle(),
-            .imageView = vkTex->image_view()->view(),
+            .imageView = vkTex->image_view()->handle(),
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
 

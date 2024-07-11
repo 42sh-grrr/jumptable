@@ -17,25 +17,32 @@ namespace saltus::vulkan
     class VulkanRenderTarget: public std::enable_shared_from_this<VulkanRenderTarget>
     {
     public:
-        class DepthBuffer
+        class RenderBuffer
         {
         public:
-            DepthBuffer(std::shared_ptr<VulkanRenderTarget> render_target,
-                        uint32_t frame_index);
-            ~DepthBuffer();
+            RenderBuffer(
+                std::shared_ptr<VulkanRenderTarget> render_target,
+                uint32_t frame_index,
+                bool is_depth
+            );
+            ~RenderBuffer();
 
-            DepthBuffer(const DepthBuffer&) = delete;
-            DepthBuffer(DepthBuffer&&) = delete;
-            DepthBuffer& operator=(const DepthBuffer&) = delete;
-            DepthBuffer& operator=(DepthBuffer&&) = delete;
+            RenderBuffer(const RenderBuffer&) = delete;
+            RenderBuffer(RenderBuffer&&) = delete;
+            RenderBuffer& operator=(const RenderBuffer&) = delete;
+            RenderBuffer& operator=(RenderBuffer&&) = delete;
 
             const std::shared_ptr<VulkanRenderTarget> &render_target() const;
-           
+
+            bool is_depth() const;
+
             const std::shared_ptr<RawVulkanImage> &image() const;
             const std::shared_ptr<RawVulkanImageView> &image_view() const;
 
         private:
             std::shared_ptr<VulkanRenderTarget> render_target_;
+
+            bool is_depth_;
            
             std::shared_ptr<RawVulkanImage> image_;
             std::shared_ptr<RawVulkanImageView> image_view_;
@@ -44,14 +51,18 @@ namespace saltus::vulkan
         VulkanRenderTarget(
             std::shared_ptr<FrameRing> frame_ring,
             std::shared_ptr<VulkanDevice> device,
-            RendererPresentMode target_present_mode
+            RendererPresentMode target_present_mode,
+            MsaaSamples msaa_samples
         );
         ~VulkanRenderTarget();
 
         const std::shared_ptr<FrameRing> &frame_ring() const;
         const std::shared_ptr<VulkanDevice> &device() const;
+
         const RendererPresentMode &target_present_mode() const;
         void target_present_mode(RendererPresentMode);
+
+        VkSampleCountFlagBits msaa_sample_bits() const;
 
         const VkFormat &swapchain_image_format() const;
         const VkExtent2D &swapchain_extent() const;
@@ -61,7 +72,7 @@ namespace saltus::vulkan
         const std::vector<VkImageView> &swapchain_image_views() const;
 
         const VkFormat &depth_format() const;
-        const FrameResource<DepthBuffer> &depth_resource() const;
+        const FrameResource<RenderBuffer> &depth_resource() const;
         
         void resize_if_changed();
         /// Full recreate the swapchain, necessary when for example a resize
@@ -70,9 +81,16 @@ namespace saltus::vulkan
 
         uint32_t acquire_next_image(VkSemaphore semaphore, VkFence fence = VK_NULL_HANDLE);
 
+        VkImage get_render_image(uint32_t acquired_image, uint32_t frame_index);
+        VkImageView get_render_image_view(uint32_t acquired_image, uint32_t frame_index);
+        VkImage get_present_image(uint32_t acquired_image, uint32_t frame_index);
+        VkImageView get_present_image_view(uint32_t acquired_image, uint32_t frame_index);
+
     private:
         std::shared_ptr<FrameRing> frame_ring_;
         std::shared_ptr<VulkanDevice> device_;
+
+        uint32_t msaa_samples_;
         RendererPresentMode target_present_mode_;
 
         VkFormat swapchain_image_format_;
@@ -83,7 +101,8 @@ namespace saltus::vulkan
         std::vector<VkImageView> swapchain_image_views_;
 
         VkFormat depth_format_;
-        FrameResource<DepthBuffer> depth_resource_;
+        FrameResource<RenderBuffer> depth_resource_;
+        std::optional<FrameResource<RenderBuffer>> backbuffer_resource_;
 
         VkSurfaceFormatKHR choose_swap_chain_format(
             const std::vector<VkSurfaceFormatKHR> &availableFormats

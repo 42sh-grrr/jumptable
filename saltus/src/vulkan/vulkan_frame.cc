@@ -1,8 +1,10 @@
 #include "saltus/vulkan/vulkan_frame.hh"
 
+#include <cassert>
 #include <vulkan/vulkan_core.h>
 
 #include "saltus/renderer.hh"
+#include "saltus/vulkan/raw_vulkan_image.hh"
 #include "saltus/vulkan/vulkan_instance_group.hh"
 
 namespace saltus::vulkan
@@ -94,8 +96,10 @@ namespace saltus::vulkan
 
     void VulkanFrame::record(const RenderInfo &info, uint32_t image_index)
     {
-        auto image_view = render_target_->swapchain_image_views()[image_index];
-        auto image = render_target_->swapchain_images()[image_index];
+        auto render_image_view = render_target_->get_render_image_view(image_index, frame_index_);
+        auto render_image = render_target_->get_render_image(image_index, frame_index_);
+        auto present_image_view = render_target_->get_present_image_view(image_index, frame_index_);
+        auto present_image = render_target_->get_present_image(image_index, frame_index_);
 
         VkCommandBufferBeginInfo begin_info{};
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -103,39 +107,28 @@ namespace saltus::vulkan
         if (result != VK_SUCCESS)
             throw std::runtime_error("Could not begin command buffer");
 
-        // <> Prepare render image layout for rendering
+        // Prepare render image layout for rendering
+        RawVulkanImage::BarrierBuilder(render_image)
+            .with_dst_access_mask(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
 
-        const VkImageMemoryBarrier image_memory_barrier_init {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .pNext = nullptr,
-            .srcAccessMask = VK_ACCESS_NONE,
-            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-            .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = image,
-            .subresourceRange = {
-              .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-              .baseMipLevel = 0,
-              .levelCount = 1,
-              .baseArrayLayer = 0,
-              .layerCount = 1,
-            },
-        };
+            .with_old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+            .with_new_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 
-        vkCmdPipelineBarrier(
-            command_buffer_,
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            0,
-            0, nullptr,
-            0, nullptr,
-            1,
-            &image_memory_barrier_init
-        );
+            .with_src_stage_mask(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)
+            .with_dst_stage_mask(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
 
-        // </> Prepare render image layout for rendering
+            .build(command_buffer_);
+        if (present_image != render_image)
+            RawVulkanImage::BarrierBuilder(present_image)
+                .with_dst_access_mask(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
+
+                .with_old_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+                .with_new_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+
+                .with_src_stage_mask(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)
+                .with_dst_stage_mask(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
+
+                .build(command_buffer_);
 
         VkRenderingInfo rendering_info{};
         rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
@@ -148,7 +141,7 @@ namespace saltus::vulkan
         VkRenderingAttachmentInfo color_attachment { };
         {
             color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-            color_attachment.imageView = image_view;
+            color_attachment.imageView = render_image_view;
             color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
             color_attachment.loadOp = info.clear_color.has_value()
@@ -165,13 +158,24 @@ namespace saltus::vulkan
                     }},
                 };
             }
+
+            if (present_image != render_image)
+            {
+                assert(present_image_view != render_image_view);
+                color_attachment.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
+                color_attachment.resolveImageView = present_image_view;
+                color_attachment.resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            }
+            else {
+                assert(present_image_view == render_image_view);
+            }
         }
         VkRenderingAttachmentInfo depth_attachment { };
         {
             const auto &depth_buffer = render_target_->depth_resource().get(frame_index_);
 
             depth_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-            depth_attachment.imageView = depth_buffer.image_view()->view();
+            depth_attachment.imageView = depth_buffer.image_view()->handle();
             depth_attachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
 
             depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -193,39 +197,17 @@ namespace saltus::vulkan
         }
         vkCmdEndRendering(command_buffer_);
 
-        // <> Prepare render image layout for presentation
+        // Prepare render image layout for rendering
+        RawVulkanImage::BarrierBuilder(present_image)
+            .with_src_access_mask(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)
+            .with_dst_access_mask(VK_ACCESS_NONE)
 
-        const VkImageMemoryBarrier image_memory_barrier {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-            .pNext = nullptr,
-            .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            .dstAccessMask = VK_ACCESS_NONE,
-            .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image = image,
-            .subresourceRange = {
-              .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-              .baseMipLevel = 0,
-              .levelCount = 1,
-              .baseArrayLayer = 0,
-              .layerCount = 1,
-            }
-        };
+            .with_old_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+            .with_new_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
 
-        vkCmdPipelineBarrier(
-            command_buffer_,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-            0,
-            0, nullptr,
-            0, nullptr,
-            1,
-            &image_memory_barrier
-        );
-
-        // </> Prepare render image layout for presentation
+            .with_src_stage_mask(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
+            .with_dst_stage_mask(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)
+            .build(command_buffer_);
 
         result = vkEndCommandBuffer(command_buffer_);
         if (result != VK_SUCCESS)

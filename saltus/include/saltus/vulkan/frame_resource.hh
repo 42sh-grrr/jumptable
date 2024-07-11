@@ -33,9 +33,8 @@ namespace saltus::vulkan
         FrameResource(Factory factory);
         FrameResource(FrameResource&&);
         FrameResource(const FrameResource&);
-
-        FrameResource& operator=(const FrameResource&) = delete;
-        FrameResource& operator=(FrameResource&&) = delete;
+        FrameResource& operator=(const FrameResource&);
+        FrameResource& operator=(FrameResource&&);
 
         T &get(uint32_t frame_index);
         const T &get(uint32_t frame_index) const;

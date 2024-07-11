@@ -23,7 +23,7 @@ namespace saltus::vulkan
 
         const std::shared_ptr<RawVulkanImage> &image() const;
         const VkFormat &format() const;
-        const VkImageView &view() const;
+        const VkImageView &handle() const;
 
     private:
         std::shared_ptr<RawVulkanImage> image_;

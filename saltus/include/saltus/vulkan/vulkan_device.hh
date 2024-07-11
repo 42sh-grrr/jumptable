@@ -39,6 +39,8 @@ namespace saltus::vulkan
         const Window &window() const;
         const VkPhysicalDeviceProperties &physical_device_properties() const;
 
+        uint32_t max_usable_sample_count() const;
+
         QueueFamilyIndices get_physical_device_family_indices() const;
         QueueFamilyIndices get_physical_device_family_indices(VkPhysicalDevice device) const;
         SwapChainSupportDetails get_physical_device_swap_chain_support_details() const;

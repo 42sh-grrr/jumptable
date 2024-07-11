@@ -19,6 +19,7 @@ namespace saltus::vulkan
             VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
             uint32_t array_layers = 1;
             VkImageType image_type = VK_IMAGE_TYPE_2D;
+            VkSampleCountFlagBits sample_count = VK_SAMPLE_COUNT_1_BIT;
 
             Builder(std::shared_ptr<VulkanDevice> device);
             Builder(const Builder&) = delete;
@@ -34,6 +35,7 @@ namespace saltus::vulkan
             Builder &with_format(VkFormat format);
             Builder &with_array_layers(uint32_t layout_count);
             Builder &with_image_type(VkImageType newtype);
+            Builder &with_sample_count(VkSampleCountFlagBits newcount);
 
             std::unique_ptr<RawVulkanImage> build();
         };

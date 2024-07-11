@@ -1,6 +1,5 @@
 #pragma once
 
-#include <iostream>
 #include <stdexcept>
 #include "saltus/vulkan/frame_resource.hh"
 
@@ -28,6 +27,20 @@ namespace saltus::vulkan
     FrameResource<T>::FrameResource(const FrameResource& other):
         inner_(other.inner_)
     { }
+
+    template <class T>
+    FrameResource<T>& FrameResource<T>::operator=(const FrameResource& other)
+    {
+        inner_ = other.inner_;
+        return *this;
+    }
+
+    template <class T>
+    FrameResource<T>& FrameResource<T>::operator=(FrameResource&& other)
+    {
+        inner_ = other.inner_;
+        return *this;
+    }
 
     template <class T>
     T &FrameResource<T>::get(uint32_t frame_index)
