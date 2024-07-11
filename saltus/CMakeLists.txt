@@ -4,7 +4,6 @@ cmake_minimum_required(VERSION 3.21.2)
 add_library(libsaltus STATIC)
 
 set_target_properties(libsaltus PROPERTIES
-    CXX_STANDARD 20
     OUTPUT_NAME saltus
 )
 
@@ -12,16 +11,7 @@ add_subdirectory(shaders)
 add_subdirectory(src)
 
 target_compile_options(libsaltus PRIVATE
-    "-Wall"
-    "-Wextra"
-    "-Werror"
     "-Wold-style-cast"
-    "-pedantic"
-    "-g3"
-    "-fsanitize=address"
-)
-target_link_options(libsaltus PRIVATE
-    "-fsanitize=address"
 )
 
 add_dependencies(libsaltus
@@ -33,6 +23,8 @@ find_library(XCB NAMES xcb libxcb Xcb REQUIRED)
 find_library(XCB_ICCCM NAMES xcb-icccm libxcb-icccm REQUIRED)
 
 target_include_directories(libsaltus PUBLIC include)
+target_include_directories(libsaltus PRIVATE src)
+
 target_link_libraries(libsaltus PRIVATE libmatrix)
 target_link_libraries(libsaltus PRIVATE liblogger)
 target_link_libraries(libsaltus PRIVATE ${VULKAN})

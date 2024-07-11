@@ -6,8 +6,11 @@ add_library(libmath SHARED)
 add_subdirectory(src)
 
 set_target_properties(libmath PROPERTIES
-    CXX_STANDARD 20
     OUTPUT_NAME math
+)
+
+target_compile_options(libmath PRIVATE
+    "-Wold-style-cast"
 )
 
 target_link_libraries(libmath PRIVATE libmatrix)
