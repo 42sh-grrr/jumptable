@@ -18,7 +18,7 @@ namespace saltus::vulkan
 
         viewInfo.subresourceRange.aspectMask = aspect_mask;
         viewInfo.subresourceRange.baseMipLevel = 0;
-        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.levelCount = image->mip_levels();
         viewInfo.subresourceRange.baseArrayLayer = 0;
         viewInfo.subresourceRange.layerCount = image->array_layers();
         viewInfo.subresourceRange.layerCount = image->array_layers();

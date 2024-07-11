@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include "matrix/vector.hh"
+
 namespace saltus
 {
     struct ImageUsages
@@ -52,8 +54,8 @@ namespace saltus
 
     struct ImageCreateInfo
     {
-        uint32_t width;
-        uint32_t height;
+        matrix::Vector3<uint32_t> dimensions = {{ 1, 1, 1 }};
+        uint32_t mip_levels = 1;
 
         ImageUsages usages;
         ImageFormat format;
@@ -62,10 +64,11 @@ namespace saltus
         uint8_t *initial_data;
     };
 
+    uint32_t max_image_mip_levels(matrix::Vector3<uint32_t> extent);
+
     class Image
     {
     public:
-        Image(ImageCreateInfo);
         virtual ~Image() = 0;
 
         Image(const Image&) = delete;
@@ -73,17 +76,19 @@ namespace saltus
         Image& operator=(const Image&) = delete;
         Image& operator=(Image&&) = delete;
 
-        const uint32_t &width() const;
-        const uint32_t &height() const;
+        const matrix::Vector3<uint32_t> &dimensions() const;
 
         const ImageUsages &usages() const;
         const ImageFormat &format() const;
 
         virtual void write(uint8_t *data) = 0;
 
+    protected:
+        Image(ImageCreateInfo&);
+
     private:
-        uint32_t width_;
-        uint32_t height_;
+        matrix::Vector3<uint32_t> dimensions_;
+        uint32_t mip_levels_ = 0;
 
         ImageUsages usages_;
         ImageFormat format_;

@@ -28,6 +28,9 @@ namespace saltus
         SamplerWraping wrap_v = SamplerWraping::Repeat;
         SamplerWraping wrap_w = SamplerWraping::Repeat;
 
+        float min_lod = 1.;
+        float max_lod = 1.;
+        float mip_lod_bias = 0.;
         bool anisotropic_filtering = true;
 
         matrix::Vector4F border_color = {{ 0., 0., 0., 0. }};

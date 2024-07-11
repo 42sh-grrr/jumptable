@@ -82,7 +82,7 @@ namespace saltus::vulkan
         samplerInfo.addressModeU = vk_wraping_to_address_mode(info.wrap_u);
         samplerInfo.addressModeV = vk_wraping_to_address_mode(info.wrap_v);
         samplerInfo.addressModeW = vk_wraping_to_address_mode(info.wrap_w);
-        samplerInfo.mipLodBias = 0.f;
+        samplerInfo.mipLodBias = info.mip_lod_bias;
 
         if (info.anisotropic_filtering)
         {
@@ -96,8 +96,8 @@ namespace saltus::vulkan
 
         samplerInfo.compareEnable = VK_FALSE;
         samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-        samplerInfo.minLod = 0.f;
-        samplerInfo.maxLod = 0.f;
+        samplerInfo.minLod = info.min_lod;
+        samplerInfo.maxLod = info.max_lod;
         samplerInfo.borderColor = color_to_border_color(info.border_color);
         samplerInfo.unnormalizedCoordinates = VK_FALSE;
 

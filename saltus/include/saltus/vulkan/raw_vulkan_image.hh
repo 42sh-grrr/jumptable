@@ -14,6 +14,7 @@ namespace saltus::vulkan
             std::shared_ptr<VulkanDevice> device;
 
             matrix::Vector3<uint32_t> size = {{ 1, 1, 1 }};
+            uint32_t mip_levels = 1;
             VkImageUsageFlags usage = 0;
             VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
             uint32_t array_layers = 1;
@@ -28,6 +29,7 @@ namespace saltus::vulkan
             Builder &with_size(uint32_t with, uint32_t height, uint32_t depth = 1);
             Builder &with_size(matrix::Vector2<uint32_t> size);
             Builder &with_size(matrix::Vector3<uint32_t> size);
+            Builder &with_mip_levels(uint32_t mip_levels);
             Builder &with_usage(VkImageUsageFlags usage);
             Builder &with_format(VkFormat format);
             Builder &with_array_layers(uint32_t layout_count);
@@ -75,6 +77,7 @@ namespace saltus::vulkan
         const std::shared_ptr<VulkanDevice> &device() const;
         const matrix::Vector3<uint32_t> &size() const;
 
+        const uint32_t &mip_levels() const;
         const uint32_t &array_layers() const;
         const VkImageType &image_type() const;
 
@@ -82,13 +85,14 @@ namespace saltus::vulkan
         const VkDeviceMemory &image_memory() const;
         const VkFormat &format() const;
 
-        void write(uint8_t *data, size_t size);
-        void write(const RawVulkanBuffer &buffer);
+        void write(uint8_t *data, size_t size, uint32_t array_index = 0);
+        void write(const RawVulkanBuffer &buffer, uint32_t array_index = 0);
 
     private:
         std::shared_ptr<VulkanDevice> device_;
         matrix::Vector3<uint32_t> size_;
 
+        uint32_t mip_levels_;
         uint32_t array_layers_;
         VkImageType image_type_;
         VkFormat format_;

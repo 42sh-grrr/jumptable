@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <iomanip>
@@ -104,10 +106,13 @@ obj_material_to_material(
     else {
         memcpy(new_pixels.data(), tgaimage.data.data(), tgaimage.data.size());
     }
+
     logger::debug() << "Converted!\n";
+    uint32_t max_mipmaps = saltus::max_image_mip_levels({{ tgaimage.width, tgaimage.height, 1 }});
+    logger::debug() << "Using " << max_mipmaps << " mips\n";
     auto image = renderer->create_image({
-        .width = tgaimage.width,
-        .height = tgaimage.height,
+        .dimensions = {{ tgaimage.width, tgaimage.height, 1 }},
+        .mip_levels = max_mipmaps,
         .usages = saltus::ImageUsages{}.with_sampled(),
         .format = {
             .pixel_format = saltus::ImagePixelFormat::BGRA,
@@ -118,6 +123,9 @@ obj_material_to_material(
     logger::debug() << "Uploaded!\n";
 
     saltus::SamplerCreateInfo sampler_info{};
+    sampler_info.min_lod = 0.;
+    sampler_info.max_lod = max_mipmaps / 1.f;
+    sampler_info.mip_lod_bias = 0.;
     if (obj_material.diffuse_map.empty())
     {
         sampler_info.mag_filter = saltus::SamplerFilter::Nearest;
@@ -150,19 +158,11 @@ obj_object_to_instance_group(
 
     if (object.colors.empty())
     {
-        std::generate_n(
-            std::back_insert_iterator(object.colors),
-            vertex_count,
-            [](){ return matrix::Vector3F({ 1.f, 1.f, 1.f }); }
-        );
+        object.colors.resize(vertex_count, matrix::Vector3F({ 1.f, 1.f, 1.f }));
     }
     if (object.normals.empty())
     {
-        std::generate_n(
-            std::back_insert_iterator(object.normals),
-            vertex_count,
-            [](){ return matrix::Vector3F({ 0.f, 0.f, 0.f }); }
-        );
+        object.normals.resize(vertex_count, matrix::Vector3F({ 0.f, 0.f, 0.f }));
     }
     std::vector<matrix::Vector2F> texcoords;
     std::transform(
@@ -174,11 +174,7 @@ obj_object_to_instance_group(
     );
     if (texcoords.empty())
     {
-        std::generate_n(
-            std::back_insert_iterator(texcoords),
-            vertex_count,
-            [](){ return matrix::Vector2F({ 0.f, 0.f }); }
-        );
+        texcoords.resize(vertex_count, matrix::Vector2F({ 0.f, 0.f }));
     }
 
     auto positions_buffer = renderer->create_buffer({
@@ -408,6 +404,8 @@ void render_thread_fn(
         );
         mvp_matrix *= math::transformation::translate3D(
             0.f, 0.5f, 0.f
+            // 0.f, 0.f, (std::sin(time / 2.f) + 1.f) / 4.f
+            // 0.f, 0.f, 0.5f
         );
         mvp_matrix *= math::transformation::rotate3Dy(time / 2.f);
         mvp_matrix *= math::transformation::scale3D(
