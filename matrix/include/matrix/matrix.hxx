@@ -302,4 +302,14 @@ namespace matrix
         }
         return *this;
     }
+
+    template <typename TYPE, int ROW, int COL>
+    template <bool E, typename std::enable_if<E, int>::type>
+    Matrix<TYPE, ROW, COL>::operator Vector<TYPE, ROW>() const
+    {
+        Vector<TYPE, ROW> vec;
+        for (int x = 0; x < ROW; x++)
+            vec[x] = mat_[x][0];
+        return vec;
+    }
 } // namespace matrix

@@ -14,6 +14,7 @@ namespace matrix
     private:
         static constexpr bool ENABLE = ROW > 0 && COL > 0;
         static constexpr bool ENABLE_TRACE = ROW == COL;
+        static constexpr bool ENABLE_VECTOR_CONVERSION = COL == 1;
 
     public:
         using type = TYPE;
@@ -60,6 +61,10 @@ namespace matrix
         [[nodiscard]] Matrix<NORMALIZED_TYPE, ROW, COL> normalized() const;
 
         Matrix<TYPE, ROW, COL>& normalize();
+
+        template <bool E = ENABLE_VECTOR_CONVERSION,
+                  typename std::enable_if<E, int>::type = 0>
+        operator Vector<TYPE, ROW>() const;
 
     protected:
         typename std::enable_if<ENABLE, TYPE>::type mat_[ROW][COL];
