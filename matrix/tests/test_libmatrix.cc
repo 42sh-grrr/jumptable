@@ -2,6 +2,8 @@
 #include <matrix/matrix.hh>
 #include <matrix/vector.hh>
 
+#define EQ(x, y) (std::abs(x - y) <= 1.0e-5f)
+
 TestSuite(libmatrix);
 
 Test(libmatrix, create_matrix)
@@ -93,8 +95,7 @@ Test(libmatrix, multiply_matrices)
 
 Test(libmatrix, create_vector_flat)
 {
-    matrix::Vector<int, 4> vec(
-        { 0, 0, 0, 1 });
+    matrix::Vector<int, 4> vec({ 0, 0, 0, 1 });
     for (int i = 0; i < vec.rows; i++)
     {
         int expected = (i == vec.rows - 1) ? 1 : 0;
@@ -248,6 +249,63 @@ Test(libmatrix, transpose_matrix)
             int actual = mat[i][j];
             cr_expect_eq(actual, expected, "Expected %d. Got %d.", expected,
                          actual);
+        }
+    }
+}
+
+Test(libmatrix, trace)
+{
+    matrix::Matrix<int, 4, 4> mat(
+        { 1, 0, 0, 2, 0, 1, 0, -1, 0, 0, 1, 1, 0, 0, 0, 1 });
+    int expected = 4;
+    int actual = mat.trace();
+    cr_expect_eq(actual, expected, "Expected %d. Got %d.", expected, actual);
+}
+
+Test(libmatrix, norm_float)
+{
+    matrix::Matrix<int, 4, 4> mat(
+        { 1, 0, 0, 2, 0, 1, 0, -1, 0, 0, 1, 1, 0, 0, 0, 1 });
+    float expected = 3.1622777;
+    float actual = mat.norm<float>();
+    cr_expect_eq(actual, expected, "Expected %.5f. Got %.5f.", expected,
+                 actual);
+}
+
+Test(libmatrix, normalized)
+{
+    matrix::Matrix<int, 4, 4> mat(
+        { 1, 0, 0, 2, 0, 1, 0, -1, 0, 0, 1, 1, 0, 0, 0, 1 });
+    matrix::Matrix<float, 4, 4> expected(
+        { 0.31622777, 0., 0., 0.63245553, 0., 0.31622777, 0., -0.31622777, 0.,
+          0., 0.31622777, 0.31622777, 0., 0., 0., 0.31622777 });
+    matrix::Matrix<float, 4, 4> actual = mat.normalized<float>();
+    for (int i = 0; i < mat.rows; i++)
+    {
+        for (int j = 0; j < mat.cols; j++)
+        {
+            cr_expect_eq(actual[i][j], expected[i][j],
+                         "Expected %.5f. Got %.5f.", expected[i][j],
+                         actual[i][j]);
+        }
+    }
+}
+
+Test(libmatrix, normalize)
+{
+    matrix::Matrix<float, 4, 4> mat(
+        { 1, 0, 0, 2, 0, 1, 0, -1, 0, 0, 1, 1, 0, 0, 0, 1 });
+    matrix::Matrix<float, 4, 4> expected(
+        { 0.31622777, 0., 0., 0.63245553, 0., 0.31622777, 0., -0.31622777, 0.,
+          0., 0.31622777, 0.31622777, 0., 0., 0., 0.31622777 });
+    matrix::Matrix<float, 4, 4>& actual = mat.normalize();
+    for (int i = 0; i < mat.rows; i++)
+    {
+        for (int j = 0; j < mat.cols; j++)
+        {
+            cr_expect_eq(actual[i][j], expected[i][j],
+                         "Expected %.5f. Got %.5f.", expected[i][j],
+                         actual[i][j]);
         }
     }
 }
