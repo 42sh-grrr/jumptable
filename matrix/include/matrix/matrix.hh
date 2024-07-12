@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <type_traits>
 
 namespace matrix
 {
@@ -12,6 +13,7 @@ namespace matrix
     {
     private:
         static constexpr bool ENABLE = ROW > 0 && COL > 0;
+        static constexpr bool ENABLE_TRACE = ROW == COL;
 
     public:
         using type = TYPE;
@@ -39,11 +41,25 @@ namespace matrix
         Matrix<TYPE, ROW, COL> operator*(TYPE scalar) const;
         Matrix<TYPE, ROW, COL>& operator*=(TYPE scalar);
 
+        Matrix<TYPE, ROW, COL> operator/(TYPE scalar) const;
+        Matrix<TYPE, ROW, COL>& operator/=(TYPE scalar);
+
         const TYPE* operator[](int idx) const;
         TYPE* operator[](int idx);
 
-        [[nodiscard]]
-        Matrix<TYPE, COL, ROW> transpose() const;
+        template <bool E = ENABLE_TRACE,
+                  typename std::enable_if<E, int>::type = 0>
+        [[nodiscard]] TYPE trace() const;
+
+        template <typename NORM_TYPE = TYPE>
+        [[nodiscard]] NORM_TYPE norm() const;
+
+        [[nodiscard]] Matrix<TYPE, COL, ROW> transpose() const;
+
+        template <typename NORMALIZED_TYPE = TYPE>
+        [[nodiscard]] Matrix<NORMALIZED_TYPE, ROW, COL> normalized() const;
+
+        Matrix<TYPE, ROW, COL>& normalize();
 
     protected:
         typename std::enable_if<ENABLE, TYPE>::type mat_[ROW][COL];
@@ -51,6 +67,10 @@ namespace matrix
 
     template <typename TYPE, int SIZE>
     Matrix<TYPE, SIZE, SIZE> identity();
+
+    template <typename TYPE, int ROW, int COL, typename DOT_TYPE = TYPE>
+    [[nodiscard]] DOT_TYPE dot(const Matrix<TYPE, ROW, COL>& mat,
+                               const Matrix<TYPE, ROW, COL>& other);
 
     using Matrix2F = Matrix<float, 2, 2>;
     using Matrix3F = Matrix<float, 3, 3>;

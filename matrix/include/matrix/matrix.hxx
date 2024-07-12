@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <matrix/matrix.hh>
 
 namespace matrix
@@ -174,6 +175,34 @@ namespace matrix
     }
 
     template <typename TYPE, int ROW, int COL>
+    Matrix<TYPE, ROW, COL> Matrix<TYPE, ROW, COL>::operator/(TYPE scalar) const
+    {
+        Matrix<TYPE, ROW, COL> res;
+        for (int i = 0; i < ROW; i++)
+        {
+            for (int j = 0; j < COL; j++)
+            {
+                res[i][j] = mat_[i][j] / scalar;
+            }
+        }
+        return res;
+    }
+
+    template <typename TYPE, int ROW, int COL>
+    Matrix<TYPE, ROW, COL>& Matrix<TYPE, ROW, COL>::operator/=(TYPE scalar)
+    {
+        Matrix<TYPE, ROW, COL> res;
+        for (int i = 0; i < ROW; i++)
+        {
+            for (int j = 0; j < COL; j++)
+            {
+                mat_[i][j] /= scalar;
+            }
+        }
+        return *this;
+    }
+
+    template <typename TYPE, int ROW, int COL>
     inline const TYPE* Matrix<TYPE, ROW, COL>::operator[](int idx) const
     {
         return mat_[idx];
@@ -183,6 +212,25 @@ namespace matrix
     inline TYPE* Matrix<TYPE, ROW, COL>::operator[](int idx)
     {
         return mat_[idx];
+    }
+
+    template <typename TYPE, int ROW, int COL>
+    template <bool E, typename std::enable_if<E, int>::type>
+    TYPE Matrix<TYPE, ROW, COL>::trace() const
+    {
+        TYPE trace = 0;
+        for (int i = 0; i < ROW; i++)
+        {
+            trace += mat_[i][i];
+        }
+        return trace;
+    }
+
+    template <typename TYPE, int ROW, int COL>
+    template <typename NORM_TYPE>
+    NORM_TYPE Matrix<TYPE, ROW, COL>::norm() const
+    {
+        return std::sqrt(dot<TYPE, ROW, COL, NORM_TYPE>(*this, *this));
     }
 
     template <typename TYPE, int ROW, int COL>
@@ -208,5 +256,50 @@ namespace matrix
             res[i][i] = 1;
         }
         return res;
+    }
+
+    template <typename TYPE, int ROW, int COL, typename DOT_TYPE>
+    DOT_TYPE dot(const Matrix<TYPE, ROW, COL>& mat,
+                 const Matrix<TYPE, ROW, COL>& other)
+    {
+        DOT_TYPE dot = 0;
+        for (int i = 0; i < ROW; i++)
+        {
+            for (int j = 0; j < COL; j++)
+            {
+                dot += mat[i][j] * other[i][j];
+            }
+        }
+        return dot;
+    }
+
+    template <typename TYPE, int ROW, int COL>
+    template <typename NORMALIZED_TYPE>
+    Matrix<NORMALIZED_TYPE, ROW, COL> Matrix<TYPE, ROW, COL>::normalized() const
+    {
+        Matrix<NORMALIZED_TYPE, ROW, COL> mat;
+        NORMALIZED_TYPE n = norm<NORMALIZED_TYPE>();
+        for (int i = 0; i < ROW; i++)
+        {
+            for (int j = 0; j < COL; j++)
+            {
+                mat[i][j] = mat_[i][j] / n;
+            }
+        }
+        return mat;
+    }
+
+    template <typename TYPE, int ROW, int COL>
+    Matrix<TYPE, ROW, COL>& Matrix<TYPE, ROW, COL>::normalize()
+    {
+        TYPE n = norm();
+        for (int i = 0; i < ROW; i++)
+        {
+            for (int j = 0; j < COL; j++)
+            {
+                mat_[i][j] /= n;
+            }
+        }
+        return *this;
     }
 } // namespace matrix
