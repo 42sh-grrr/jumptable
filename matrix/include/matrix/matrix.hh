@@ -12,6 +12,7 @@ namespace matrix
     {
     private:
         static constexpr bool ENABLE = ROW > 0 && COL > 0;
+        static constexpr bool ENABLE_VECTOR_CONVERSION = COL == 1;
 
     public:
         using type = TYPE;
@@ -41,6 +42,15 @@ namespace matrix
 
         const TYPE* operator[](int idx) const;
         TYPE* operator[](int idx);
+
+        template <bool E = ENABLE_VECTOR_CONVERSION, typename std::enable_if<E, int>::type = 0>
+        operator Vector<TYPE, ROW>() const
+        {
+            auto vect = Vector<TYPE, ROW>();
+            for (int x = 0; x < ROW; x++)
+                vect[x] = mat_[x][0];
+            return vect;
+        }
 
         [[nodiscard]]
         Matrix<TYPE, COL, ROW> transpose() const;
