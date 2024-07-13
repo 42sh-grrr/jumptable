@@ -360,16 +360,15 @@ namespace saltus::vulkan
 
         QueueFamilyIndices indices = device_->get_physical_device_family_indices();
 
-        uint32_t queue_family_indices[] = {
+        std::array<uint32_t, 2> queue_family_indices = {
             indices.graphicsFamily.value(),
             indices.presentFamily.value(),
         };
 
-        if (indices.graphicsFamily != indices.presentFamily) {
+        if (queue_family_indices[0] != queue_family_indices[1]) {
             create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-            create_info.queueFamilyIndexCount =
-                sizeof(queue_family_indices) / sizeof(*queue_family_indices);
-            create_info.pQueueFamilyIndices = queue_family_indices;
+            create_info.queueFamilyIndexCount = queue_family_indices.size();
+            create_info.pQueueFamilyIndices = queue_family_indices.data();
         } else {
             create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
             create_info.queueFamilyIndexCount = 0; // Optional
