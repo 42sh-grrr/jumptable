@@ -1,12 +1,13 @@
+#include "logger/level.hh"
 #include "saltus/window_events.hh"
 #include "saltus/window.hh"
 
 #include <cstring>
-#include <iostream>
 #include <xcb/xcb.h>
 #include <xcb/xcb_atom.h>
 #include <xcb/xcb_icccm.h>
 #include <xcb/xcb_ewmh.h>
+#include <xcb/xfixes.h>
 #include <memory>
 #include <unistd.h>
 #include <xcb/xproto.h>
@@ -14,6 +15,24 @@
 
 namespace saltus
 {
+    const uint32_t mouse_event_mask =
+        XCB_EVENT_MASK_BUTTON_PRESS |
+        XCB_EVENT_MASK_BUTTON_RELEASE |
+        XCB_EVENT_MASK_POINTER_MOTION | 
+        XCB_EVENT_MASK_BUTTON_MOTION | 
+        XCB_EVENT_MASK_BUTTON_1_MOTION | 
+        XCB_EVENT_MASK_BUTTON_2_MOTION | 
+        XCB_EVENT_MASK_BUTTON_3_MOTION | 
+        XCB_EVENT_MASK_BUTTON_4_MOTION | 
+    0;
+    const uint32_t event_mask =
+        XCB_EVENT_MASK_EXPOSURE |
+        XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |
+
+        mouse_event_mask |
+
+    0;
+
     struct Window::WindowData
     {
         xcb_connection_t *connection;
@@ -116,7 +135,7 @@ namespace saltus
                 });
             }
             default:
-                std::cerr << "Unknown event: " << (event->response_type & ~0x80) << "\n";
+                logger::debug() << "Unknown XCB event: " << (event->response_type & ~0x80) << "\n";
                 return std::unique_ptr<WindowEvent>();
             }
         }
@@ -148,6 +167,8 @@ namespace saltus
 
         data->connection = xcb_connect(nullptr, nullptr);
 
+        xcb_xfixes_query_version(data->connection, XCB_XFIXES_MAJOR_VERSION, XCB_XFIXES_MINOR_VERSION);
+
         const xcb_setup_t *setup = xcb_get_setup(data->connection);
         xcb_screen_iterator_t iter = xcb_setup_roots_iterator(setup);
         data->screen = iter.data;
@@ -155,21 +176,7 @@ namespace saltus
         data->window_id = xcb_generate_id(data->connection);
 
         uint32_t mask = XCB_CW_EVENT_MASK;
-        uint32_t value_list[] = {
-            XCB_EVENT_MASK_EXPOSURE |
-            XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |
-
-            XCB_EVENT_MASK_BUTTON_PRESS |
-            XCB_EVENT_MASK_BUTTON_RELEASE |
-            XCB_EVENT_MASK_POINTER_MOTION | 
-            XCB_EVENT_MASK_BUTTON_MOTION | 
-            XCB_EVENT_MASK_BUTTON_1_MOTION | 
-            XCB_EVENT_MASK_BUTTON_2_MOTION | 
-            XCB_EVENT_MASK_BUTTON_3_MOTION | 
-            XCB_EVENT_MASK_BUTTON_4_MOTION | 
-            
-            0
-        };
+        uint32_t value_list[] = { event_mask };
         xcb_create_window(
             data->connection,              /* connection */
             XCB_COPY_FROM_PARENT,          /* depth */
@@ -247,6 +254,83 @@ namespace saltus
             .width = reply->width,
             .height = reply->height,
         };
+    }
+
+    void Window::hide_mouse() const
+    {
+        const int width = 1;
+        const int height = 1;
+
+        // Create a pixmap (1x1 transparent pixel)
+        xcb_pixmap_t pixmap = xcb_generate_id(data_->connection);
+        xcb_create_pixmap(data_->connection, 1, pixmap, data_->screen->root, width, height);
+
+        // Create a graphic context
+        xcb_gcontext_t gc = xcb_generate_id(data_->connection);
+        uint32_t mask = XCB_GC_FOREGROUND;
+        uint32_t value_list = 0;  // Transparent color
+        xcb_create_gc(data_->connection, gc, pixmap, mask, &value_list);
+
+        // Draw a transparent pixel
+        xcb_rectangle_t rect = {0, 0, width, height};
+        xcb_poly_fill_rectangle(data_->connection, pixmap, gc, 1, &rect);
+
+        // Create the cursor
+        xcb_cursor_t cursor = xcb_generate_id(data_->connection);
+        xcb_create_cursor(data_->connection, cursor, pixmap, pixmap, 0, 0, 0, 0, 0, 0, 0, 0);
+
+        // Change the cursor for the root window
+        xcb_change_window_attributes(data_->connection, data_->screen->root, XCB_CW_CURSOR, &cursor);
+
+        xcb_free_cursor(data_->connection, cursor);
+        xcb_free_pixmap(data_->connection, pixmap);
+        xcb_free_gc(data_->connection, gc);
+    }
+
+    void Window::show_mouse() const
+    {
+        auto c = XCB_NONE;
+        xcb_change_window_attributes(data_->connection, data_->screen->root, XCB_CW_CURSOR, &c);
+    }
+
+    bool Window::capture_mouse() const
+    {
+        auto cookie = xcb_grab_pointer(
+            data_->connection, 1, data_->window_id, 0,
+            XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC,
+            data_->window_id,
+            XCB_NONE,
+            XCB_CURRENT_TIME
+        );
+        auto reply = xcb_grab_pointer_reply(data_->connection, cookie, nullptr);
+        if (!reply)
+            throw std::runtime_error("Could not capture mouse");
+        switch (reply->status)
+        {
+        case XCB_GRAB_STATUS_SUCCESS:
+            logger::trace() << "Mouse grab success\n";
+            return true;
+        case XCB_GRAB_STATUS_ALREADY_GRABBED:
+            logger::trace() << "Mouse grab error: Already grabbed\n";
+            break;
+        case XCB_GRAB_STATUS_INVALID_TIME:
+            logger::trace() << "Mouse grab error: Invalid time\n";
+            break;
+        case XCB_GRAB_STATUS_NOT_VIEWABLE:
+            logger::trace() << "Mouse grab error: Not viewable\n";
+            break;
+        case XCB_GRAB_STATUS_FROZEN:
+            logger::trace() << "Mouse grab error: Frozen\n";
+            break;
+        default:
+            break;
+        }
+        return false;
+    }
+
+    void Window::release_mouse() const
+    {
+        xcb_ungrab_pointer(data_->connection, XCB_CURRENT_TIME);
     }
     
     VkSurfaceKHR Window::create_vulkan_surface(VkInstance instance) const

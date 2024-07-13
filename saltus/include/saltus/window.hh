@@ -46,6 +46,13 @@ namespace saltus
 
         WindowGeometry request_geometry() const;
 
+        void hide_mouse() const;
+        void show_mouse() const;
+
+        /// Returns true only and only if the mouse is now captured
+        bool capture_mouse() const;
+        void release_mouse() const;
+
         VkSurfaceKHR create_vulkan_surface(VkInstance instance) const;
 
     protected:

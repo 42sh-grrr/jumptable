@@ -21,6 +21,7 @@ add_dependencies(libsaltus
 find_library(VULKAN NAMES vulkan libvulkan REQUIRED)
 find_library(XCB NAMES xcb libxcb Xcb REQUIRED)
 find_library(XCB_ICCCM NAMES xcb-icccm libxcb-icccm REQUIRED)
+find_library(XCB_FIXES NAMES xcb-xfixes libxcb-xfixes REQUIRED)
 
 target_include_directories(libsaltus PUBLIC include)
 target_include_directories(libsaltus PRIVATE src)
@@ -30,3 +31,4 @@ target_link_libraries(libsaltus PRIVATE liblogger)
 target_link_libraries(libsaltus PRIVATE ${VULKAN})
 target_link_libraries(libsaltus PRIVATE ${XCB})
 target_link_libraries(libsaltus PRIVATE ${XCB_ICCCM})
+target_link_libraries(libsaltus PRIVATE ${XCB_FIXES})
