@@ -1,4 +1,5 @@
 #include "saltus/vulkan/raw_vulkan_image.hh"
+#include <algorithm>
 #include <cstring>
 #include <vulkan/vulkan_core.h>
 #include "saltus/vulkan/raw_command_buffer.hh"
@@ -62,6 +63,21 @@ namespace saltus::vulkan
     RawVulkanImage::Builder &RawVulkanImage::Builder::with_sample_count(VkSampleCountFlagBits newcount)
     {
         sample_count = newcount;
+        return *this;
+    }
+
+    RawVulkanImage::Builder &RawVulkanImage::Builder::with_concurrent(std::span<uint32_t> families)
+    {
+        for (uint32_t family : families)
+        {
+            bool already_contained = std::ranges::any_of(
+                concurrent_queue_families,
+                [family](uint32_t other){ return other == family; }
+            );
+            if (already_contained)
+                continue;
+            concurrent_queue_families.push_back(family);
+        }
         return *this;
     }
 
@@ -182,7 +198,11 @@ namespace saltus::vulkan
         imageInfo.usage = builder.usage;
         if (builder.mip_levels > 1)
             imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        imageInfo.sharingMode = builder.concurrent_queue_families.size() > 1
+            ? VK_SHARING_MODE_CONCURRENT
+            : VK_SHARING_MODE_EXCLUSIVE;
+        imageInfo.queueFamilyIndexCount = builder.concurrent_queue_families.size();
+        imageInfo.pQueueFamilyIndices = builder.concurrent_queue_families.data();
         imageInfo.samples = builder.sample_count;
 
         VkResult result = vkCreateImage(*device_, &imageInfo, nullptr, &image_);

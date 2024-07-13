@@ -1,5 +1,6 @@
 #pragma once
 
+#include <span>
 #include <vulkan/vulkan_core.h>
 #include "saltus/vulkan/raw_vulkan_buffer.hh"
 #include "saltus/vulkan/vulkan_device.hh"
@@ -20,6 +21,7 @@ namespace saltus::vulkan
             uint32_t array_layers = 1;
             VkImageType image_type = VK_IMAGE_TYPE_2D;
             VkSampleCountFlagBits sample_count = VK_SAMPLE_COUNT_1_BIT;
+            std::vector<uint32_t> concurrent_queue_families;
 
             Builder(std::shared_ptr<VulkanDevice> device);
             Builder(const Builder&) = delete;
@@ -36,6 +38,10 @@ namespace saltus::vulkan
             Builder &with_array_layers(uint32_t layout_count);
             Builder &with_image_type(VkImageType newtype);
             Builder &with_sample_count(VkSampleCountFlagBits newcount);
+            Builder &with_concurrent(std::span<uint32_t> families);
+            template <int T>
+            Builder &with_concurrent(std::array<uint32_t, T> families)
+            { return with_concurrent(std::span{families}); }
 
             std::unique_ptr<RawVulkanImage> build();
         };
