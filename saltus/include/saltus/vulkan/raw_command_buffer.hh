@@ -1,8 +1,10 @@
 #pragma once
 
 #include <vulkan/vulkan_core.h>
-#include "saltus/vulkan/raw_vulkan_fence.hh"
-#include "saltus/vulkan/vulkan_device.hh"
+#include <memory>
+
+#include "saltus/vulkan/fwd.hh"
+
 namespace saltus::vulkan
 {
     class RawCommandBuffer

@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <optional>
+
 #include "saltus/byte_array.hh"
 
 namespace saltus

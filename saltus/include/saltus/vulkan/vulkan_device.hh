@@ -2,10 +2,11 @@
 
 #include <optional>
 #include <vector>
+#include <memory>
 #include <vulkan/vulkan_core.h>
 
-#include "saltus/vulkan/vulkan_instance.hh"
-#include "saltus/window.hh"
+#include "saltus/vulkan/fwd.hh"
+#include "saltus/fwd.hh"
 
 namespace saltus::vulkan
 {

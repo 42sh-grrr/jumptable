@@ -1,8 +1,9 @@
 #pragma once
 
+#include <memory>
+
 #include "saltus/image.hh"
-#include "saltus/vulkan/raw_vulkan_image.hh"
-#include "saltus/vulkan/vulkan_device.hh"
+#include "saltus/vulkan/fwd.hh"
 
 namespace saltus::vulkan
 {

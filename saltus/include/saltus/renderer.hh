@@ -1,18 +1,11 @@
 #pragma once
 
 #include <memory>
+#include <optional>
+#include <vector>
 
+#include "saltus/fwd.hh"
 #include "matrix/vector.hh"
-#include "saltus/bind_group.hh"
-#include "saltus/image.hh"
-#include "saltus/instance_group.hh"
-#include "saltus/shader_pack.hh"
-#include "saltus/mesh.hh"
-#include "saltus/sampler.hh"
-#include "saltus/texture.hh"
-#include "saltus/window.hh"
-#include "saltus/shader.hh"
-#include "saltus/buffer.hh"
 
 namespace saltus
 {

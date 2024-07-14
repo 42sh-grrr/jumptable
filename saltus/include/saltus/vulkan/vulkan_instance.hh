@@ -1,7 +1,8 @@
 #pragma once
 
 #include <vulkan/vulkan_core.h>
-#include "saltus/vulkan/vulkan_renderer.hh"
+
+#include "saltus/vulkan/fwd.hh"
 
 namespace saltus::vulkan
 {

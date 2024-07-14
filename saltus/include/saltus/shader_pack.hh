@@ -2,9 +2,9 @@
 
 #include <string>
 #include <memory>
+#include <vector>
 
-#include "saltus/bind_group_layout.hh"
-#include "saltus/shader.hh"
+#include "saltus/fwd.hh"
 #include "saltus/vertex_attribute.hh"
 
 namespace saltus

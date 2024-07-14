@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+
 #include "matrix/vector.hh"
 
 namespace saltus

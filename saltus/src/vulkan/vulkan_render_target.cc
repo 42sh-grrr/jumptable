@@ -9,9 +9,11 @@
 #include <logger/level.hh>
 
 #include "saltus/renderer.hh"
+#include "saltus/window.hh"
 #include "saltus/vulkan/frame_ring.hh"
 #include "saltus/vulkan/raw_vulkan_image.hh"
 #include "saltus/vulkan/raw_vulkan_image_view.hh"
+#include "saltus/vulkan/vulkan_device.hh"
 
 namespace saltus::vulkan
 {

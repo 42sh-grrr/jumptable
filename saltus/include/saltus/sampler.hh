@@ -1,6 +1,7 @@
 #pragma once
 
 #include "matrix/vector.hh"
+
 namespace saltus
 {
     enum class SamplerFilter

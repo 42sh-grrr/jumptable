@@ -2,8 +2,11 @@
 
 #include <span>
 #include <vulkan/vulkan_core.h>
-#include "saltus/vulkan/raw_vulkan_buffer.hh"
-#include "saltus/vulkan/vulkan_device.hh"
+#include <vector>
+#include <memory>
+#include <matrix/vector.hh>
+
+#include "saltus/vulkan/fwd.hh"
 
 namespace saltus::vulkan
 {

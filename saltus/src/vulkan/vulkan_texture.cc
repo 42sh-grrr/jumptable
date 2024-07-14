@@ -2,7 +2,10 @@
 
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
+
 #include "saltus/vulkan/raw_vulkan_image_view.hh"
+#include "saltus/vulkan/vulkan_image.hh"
+#include "saltus/vulkan/vulkan_sampler.hh"
 
 namespace saltus::vulkan
 {

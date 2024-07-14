@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan_core.h>
+
 #include "saltus/vulkan/raw_vulkan_image.hh"
 
 namespace saltus::vulkan

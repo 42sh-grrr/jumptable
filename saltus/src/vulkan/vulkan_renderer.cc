@@ -21,14 +21,13 @@
 #include "saltus/vulkan/vulkan_instance_group.hh"
 #include "saltus/vulkan/frame_ring.hh"
 #include "saltus/vulkan/vulkan_texture.hh"
+#include "saltus/vulkan/vulkan_device.hh"
+#include "saltus/vulkan/vulkan_frame.hh"
+#include "saltus/vulkan/vulkan_buffer.hh"
+#include "saltus/vulkan/vulkan_instance.hh"
 
 namespace saltus::vulkan
 {
-    bool QueueFamilyIndices::is_complete()
-    {
-        return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value();
-    }
-
     VulkanRenderer::VulkanRenderer(RendererCreateInfo info): Renderer(info)
     {
         frame_ring_ = std::make_shared<FrameRing>(*this);

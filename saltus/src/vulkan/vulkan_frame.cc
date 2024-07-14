@@ -6,6 +6,9 @@
 #include "saltus/renderer.hh"
 #include "saltus/vulkan/raw_vulkan_image.hh"
 #include "saltus/vulkan/vulkan_instance_group.hh"
+#include "saltus/vulkan/vulkan_render_target.hh"
+#include "saltus/vulkan/vulkan_device.hh"
+#include "saltus/vulkan/raw_vulkan_image_view.hh"
 
 namespace saltus::vulkan
 {

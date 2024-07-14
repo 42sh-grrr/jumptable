@@ -1,6 +1,9 @@
 #include "saltus/vulkan/vulkan_bind_group_layout.hh"
+
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
+
+#include "saltus/vulkan/vulkan_device.hh"
 
 namespace saltus::vulkan
 {

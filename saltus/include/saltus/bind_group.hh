@@ -3,9 +3,8 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include "saltus/bind_group_layout.hh"
-#include "saltus/buffer.hh"
-#include "saltus/texture.hh"
+
+#include "saltus/fwd.hh"
 
 namespace saltus
 {

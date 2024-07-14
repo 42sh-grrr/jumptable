@@ -3,8 +3,8 @@
 #include <memory>
 #include <vulkan/vulkan_core.h>
 
-#include "saltus/renderer.hh"
-#include "saltus/vulkan/vulkan_render_target.hh"
+#include "saltus/fwd.hh"
+#include "saltus/vulkan/fwd.hh"
 
 namespace saltus::vulkan
 {

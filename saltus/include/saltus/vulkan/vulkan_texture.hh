@@ -3,10 +3,7 @@
 #include <vulkan/vulkan_core.h>
 
 #include "saltus/texture.hh"
-#include "saltus/vulkan/raw_vulkan_image_view.hh"
-#include "saltus/vulkan/vulkan_device.hh"
-#include "saltus/vulkan/vulkan_image.hh"
-#include "saltus/vulkan/vulkan_sampler.hh"
+#include "saltus/vulkan/fwd.hh"
 
 namespace saltus::vulkan
 {

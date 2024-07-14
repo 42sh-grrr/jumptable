@@ -1,8 +1,10 @@
 #pragma once
 
 #include <memory>
+#include <vulkan/vulkan_core.h>
+
 #include "saltus/sampler.hh"
-#include "saltus/vulkan/vulkan_device.hh"
+#include "saltus/vulkan/fwd.hh"
 
 namespace saltus::vulkan
 {

@@ -4,7 +4,9 @@
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
+#include "saltus/vulkan/vulkan_frame.hh"
 #include "saltus/vulkan/config.hh"
+#include "saltus/vulkan/vulkan_renderer.hh"
 
 namespace saltus::vulkan
 {

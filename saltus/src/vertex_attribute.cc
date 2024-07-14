@@ -1,4 +1,5 @@
 #include "saltus/vertex_attribute.hh"
+
 #include <stdexcept>
 
 namespace saltus

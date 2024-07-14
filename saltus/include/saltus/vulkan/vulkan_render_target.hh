@@ -5,9 +5,7 @@
 
 #include "saltus/renderer.hh"
 #include "saltus/vulkan/frame_resource.hh"
-#include "saltus/vulkan/raw_vulkan_image.hh"
-#include "saltus/vulkan/raw_vulkan_image_view.hh"
-#include "saltus/vulkan/vulkan_device.hh"
+#include "saltus/vulkan/fwd.hh"
 
 namespace saltus::vulkan
 {

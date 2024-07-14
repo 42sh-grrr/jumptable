@@ -1,11 +1,21 @@
+#include "saltus/vulkan/vulkan_instance_group.hh"
+
 #include <algorithm>
 #include <iterator>
 #include <memory>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
-#include "saltus/vulkan/vulkan_instance_group.hh"
+
 #include "saltus/vertex_attribute.hh"
+#include "saltus/vulkan/raw_vulkan_buffer.hh"
+#include "saltus/vulkan/vulkan_device.hh"
 #include "saltus/vulkan/vulkan_shader_pack.hh"
+#include "saltus/vulkan/vulkan_bind_group.hh"
+#include "saltus/vulkan/vulkan_bind_group_layout.hh"
+#include "saltus/vulkan/vulkan_render_target.hh"
+#include "saltus/vulkan/vulkan_mesh.hh"
+#include "saltus/vulkan/vulkan_buffer.hh"
+#include "saltus/vulkan/vulkan_shader.hh"
 
 namespace saltus::vulkan
 {

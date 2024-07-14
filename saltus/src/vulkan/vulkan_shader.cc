@@ -3,7 +3,9 @@
 #include <stdexcept>
 #include <cassert>
 #include <vulkan/vulkan_core.h>
+
 #include "saltus/shader.hh"
+#include "saltus/vulkan/vulkan_device.hh"
 
 namespace saltus::vulkan
 {

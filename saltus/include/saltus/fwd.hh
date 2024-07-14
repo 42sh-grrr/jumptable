@@ -1,0 +1,50 @@
+#pragma once
+/// Forward declarations of most saltus classes
+
+namespace saltus
+{
+    struct BindGroupCreateInfo;
+    class BindGroup;
+    struct BindGroupLayoutBindingInfo;
+    struct BindGroupLayoutCreateInfo;
+    class BindGroupLayout;
+    struct BufferUsages;
+    struct BufferCreateInfo;
+    class Buffer;
+    struct ImageUsages;
+    struct ImageFormat;
+    struct ImageCreateInfo;
+    class Image;
+    struct InstanceGroupCreateInfo;
+    class InstanceGroup;
+    struct MeshVertexAttribute;
+    struct MeshCreateInfo;
+    class Mesh;
+    struct RendererCreateInfo;
+    struct RenderInfo;
+    class Renderer;
+    struct SamplerCreateInfo;
+    class Sampler;
+    struct ShaderCreateInfo;
+    class Shader;
+    struct ShaderPackVertexAttribute;
+    struct ShaderPackCreateInfo;
+    class ShaderPack;
+    struct TextureCreateInfo;
+    class Texture;
+    struct VertexAttributeType;
+    class WindowEvent;
+    class WindowCloseRequestEvent;
+    class WindowExposeEvent;
+    class WindowKeyboardEvent;
+    class WindowKeyPressEvent;
+    class WindowKeyReleaseEvent;
+    class WindowMouseEvent;
+    class WindowMouseMoveEvent;
+    class WindowMouseButtonPressEvent;
+    class WindowMouseButtonReleaseEvent;
+    class Window;
+    struct WindowGeometry;
+    class WindowBuilder;
+    class Window;
+} // namespace saltus

@@ -1,5 +1,8 @@
 #include "saltus/mesh.hh"
+
 #include <stdexcept>
+
+#include "saltus/buffer.hh"
 
 namespace saltus
 {

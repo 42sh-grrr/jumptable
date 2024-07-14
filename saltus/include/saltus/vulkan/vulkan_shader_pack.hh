@@ -1,10 +1,9 @@
 #pragma once
 
 #include <vulkan/vulkan_core.h>
+
 #include "saltus/shader_pack.hh"
-#include "saltus/vulkan/vulkan_bind_group_layout.hh"
-#include "saltus/vulkan/vulkan_device.hh"
-#include "saltus/vulkan/vulkan_shader.hh"
+#include "saltus/vulkan/fwd.hh"
 
 namespace saltus::vulkan
 {

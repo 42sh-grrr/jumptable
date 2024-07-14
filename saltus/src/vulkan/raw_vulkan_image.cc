@@ -1,10 +1,13 @@
 #include "saltus/vulkan/raw_vulkan_image.hh"
+
 #include <algorithm>
 #include <cstring>
 #include <vulkan/vulkan_core.h>
+
 #include "saltus/vulkan/raw_command_buffer.hh"
 #include "saltus/vulkan/raw_vulkan_buffer.hh"
 #include "saltus/vulkan/raw_vulkan_fence.hh"
+#include "saltus/vulkan/vulkan_device.hh"
 
 namespace saltus::vulkan
 {

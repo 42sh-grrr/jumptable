@@ -1,6 +1,9 @@
 #include "saltus/instance_group.hh"
+
 #include <stdexcept>
+
 #include "saltus/mesh.hh"
+#include "saltus/shader_pack.hh"
 
 namespace saltus
 {

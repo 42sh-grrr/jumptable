@@ -1,9 +1,9 @@
 #pragma once
 
-#include "saltus/image.hh"
-#include "saltus/renderer.hh"
-
 #include <vulkan/vulkan_core.h>
+
+#include "saltus/fwd.hh"
+#include "saltus/renderer.hh"
 
 namespace saltus::vulkan
 {

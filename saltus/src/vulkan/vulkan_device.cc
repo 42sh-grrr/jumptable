@@ -1,4 +1,5 @@
 #include "saltus/vulkan/vulkan_device.hh"
+
 #include <algorithm>
 #include <cstring>
 #include <set>
@@ -6,8 +7,11 @@
 #include <vector>
 #include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vulkan_core.h>
-#include "logger/level.hh"
+#include <logger/level.hh>
+
 #include "saltus/vulkan/vulkan_instance.hh"
+#include "saltus/vulkan/vulkan_device.hh"
+#include "saltus/window.hh"
 
 namespace saltus::vulkan
 {
@@ -18,6 +22,11 @@ namespace saltus::vulkan
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
     };
+
+    bool QueueFamilyIndices::is_complete()
+    {
+        return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value();
+    }
 
     VulkanDevice::VulkanDevice(const Window &window, std::shared_ptr<VulkanInstance> instance)
         : instance_(instance), window_(window)

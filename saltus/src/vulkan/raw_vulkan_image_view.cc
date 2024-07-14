@@ -1,5 +1,8 @@
 #include "saltus/vulkan/raw_vulkan_image_view.hh"
+
 #include <vulkan/vulkan_core.h>
+
+#include "saltus/vulkan/vulkan_device.hh"
 
 namespace saltus::vulkan
 {

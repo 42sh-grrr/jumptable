@@ -3,6 +3,8 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
+#include "saltus/vulkan/vulkan_device.hh"
+
 namespace saltus::vulkan
 {
     RawVulkanSemaphore::RawVulkanSemaphore(std::shared_ptr<VulkanDevice> device):

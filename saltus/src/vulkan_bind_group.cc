@@ -1,10 +1,17 @@
 #include "saltus/vulkan/vulkan_bind_group.hh"
+
 #include <cassert>
 #include <memory>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
+
 #include "saltus/vulkan/vulkan_buffer.hh"
 #include "saltus/vulkan/vulkan_texture.hh"
+#include "saltus/vulkan/vulkan_device.hh"
+#include "saltus/vulkan/vulkan_bind_group_layout.hh"
+#include "saltus/vulkan/raw_vulkan_buffer.hh"
+#include "saltus/vulkan/vulkan_sampler.hh"
+#include "saltus/vulkan/raw_vulkan_image_view.hh"
 
 namespace saltus::vulkan
 {

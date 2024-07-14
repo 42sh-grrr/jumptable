@@ -3,6 +3,9 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
+#include "saltus/vulkan/raw_vulkan_fence.hh"
+#include "saltus/vulkan/vulkan_device.hh"
+
 namespace saltus::vulkan
 {
     RawVulkanFence::RawVulkanFence(std::shared_ptr<VulkanDevice> device, bool signaled):

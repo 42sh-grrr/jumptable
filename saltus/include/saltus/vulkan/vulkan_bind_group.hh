@@ -2,9 +2,10 @@
 
 #include <unordered_map>
 #include <vulkan/vulkan_core.h>
+
+#include "saltus/vulkan/fwd.hh"
 #include "saltus/bind_group.hh"
-#include "saltus/vulkan/vulkan_bind_group_layout.hh"
-#include "saltus/vulkan/vulkan_device.hh"
+
 namespace saltus::vulkan
 {
     class VulkanBindGroup: public BindGroup

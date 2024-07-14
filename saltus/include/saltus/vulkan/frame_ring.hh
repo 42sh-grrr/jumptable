@@ -1,11 +1,11 @@
 #pragma once
 
 #include <vector>
+#include <memory>
 #include <vulkan/vulkan_core.h>
 
+#include "saltus/vulkan/fwd.hh"
 #include "saltus/vulkan/frame_resource.hh"
-#include "saltus/vulkan/vulkan_renderer.hh"
-#include "saltus/vulkan/vulkan_frame.hh"
 
 namespace saltus::vulkan
 {

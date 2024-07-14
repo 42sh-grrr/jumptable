@@ -34,6 +34,8 @@
 #include "saltus/loaders/obj_loader.hh"
 #include "saltus/loaders/tga_loader.hh"
 #include "saltus/sampler.hh"
+#include "saltus/texture.hh"
+#include "saltus/shader.hh"
 
 using namespace std::chrono_literals;
 

@@ -1,7 +1,10 @@
 #include "saltus/vulkan/vulkan_mesh.hh"
+
 #include <memory>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
+
+#include "saltus/vulkan/vulkan_buffer.hh"
 
 namespace saltus::vulkan
 {

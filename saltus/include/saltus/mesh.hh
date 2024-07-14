@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "saltus/buffer.hh"
+#include "saltus/fwd.hh"
 #include "saltus/vertex_attribute.hh"
 
 namespace saltus

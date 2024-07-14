@@ -1,9 +1,11 @@
 #include "saltus/vulkan/vulkan_sampler.hh"
+
 #include <cstdlib>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
+
 #include "matrix/vector.hh"
-#include "saltus/sampler.hh"
+#include "saltus/vulkan/vulkan_device.hh"
 
 namespace saltus::vulkan
 {

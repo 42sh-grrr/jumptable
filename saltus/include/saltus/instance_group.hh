@@ -1,9 +1,9 @@
 #pragma once
 
 #include <memory>
-#include "saltus/bind_group.hh"
-#include "saltus/mesh.hh"
-#include "saltus/shader_pack.hh"
+#include <vector>
+
+#include "saltus/fwd.hh"
 
 namespace saltus
 {

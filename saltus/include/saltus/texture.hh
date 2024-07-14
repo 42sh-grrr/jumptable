@@ -1,8 +1,8 @@
 #pragma once
 
 #include <memory>
-#include "saltus/image.hh"
-#include "saltus/sampler.hh"
+
+#include "saltus/fwd.hh"
 
 namespace saltus
 {
