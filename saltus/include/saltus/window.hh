@@ -53,6 +53,8 @@ namespace saltus
         bool capture_mouse() const;
         void release_mouse() const;
 
+        void warp_mouse(int new_x, int new_y) const;
+
         VkSurfaceKHR create_vulkan_surface(VkInstance instance) const;
 
     protected:

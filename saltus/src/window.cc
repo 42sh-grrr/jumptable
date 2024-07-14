@@ -332,6 +332,17 @@ namespace saltus
     {
         xcb_ungrab_pointer(data_->connection, XCB_CURRENT_TIME);
     }
+
+    void Window::warp_mouse(int new_x, int new_y) const {
+        xcb_warp_pointer_checked(
+             data_->connection,
+             XCB_NONE,
+             data_->window_id,
+             0, 0,
+             0, 0,
+             new_x, new_y
+        );
+    }
     
     VkSurfaceKHR Window::create_vulkan_surface(VkInstance instance) const
     {
