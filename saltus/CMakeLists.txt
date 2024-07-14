@@ -10,6 +10,9 @@ set_target_properties(libsaltus PROPERTIES
 add_subdirectory(shaders)
 add_subdirectory(src)
 
+# Tests
+add_subdirectory(tests)
+
 target_compile_options(libsaltus PRIVATE
     "-Wold-style-cast"
 )
@@ -26,8 +29,8 @@ find_library(XCB_FIXES NAMES xcb-xfixes libxcb-xfixes REQUIRED)
 target_include_directories(libsaltus PUBLIC include)
 target_include_directories(libsaltus PRIVATE src)
 
-target_link_libraries(libsaltus PRIVATE libmatrix)
-target_link_libraries(libsaltus PRIVATE liblogger)
+target_link_libraries(libsaltus PUBLIC libmatrix)
+target_link_libraries(libsaltus PUBLIC liblogger)
 target_link_libraries(libsaltus PRIVATE ${VULKAN})
 target_link_libraries(libsaltus PRIVATE ${XCB})
 target_link_libraries(libsaltus PRIVATE ${XCB_ICCCM})
