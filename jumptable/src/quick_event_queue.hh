@@ -53,7 +53,7 @@ public:
             const std::lock_guard<std::mutex> lock(queue_mutex);
             if (queue.size() == 0)
                 return std::nullopt;
-            auto b = queue.front();
+            T b = queue.front();
             queue.pop();
             return b;
         }

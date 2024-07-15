@@ -88,7 +88,7 @@ struct Scene
 
 struct SharedData
 {
-    QuickEventQueue<QuickEvent> events;
+    QuickEventQueue<std::shared_ptr<QuickEvent>> events;
     std::atomic_bool stop;
 
     std::mutex input_lock;
@@ -521,7 +521,7 @@ void render_thread_fn(
         auto micros = std::chrono::duration_cast<std::chrono::microseconds>(elapsed);
 
         last_t = std::chrono::high_resolution_clock::now();
-        shared_data->events.send(RenderFinishedEvent {});
+        shared_data->events.send(std::make_shared<QuickEvent>(RenderFinishedEvent {}));
 
         if (std::chrono::high_resolution_clock::now() - last_print > print_interval)
         {
@@ -536,7 +536,7 @@ void render_thread_fn(
     {
         while (auto event = receiver->poll_recv())
         {
-            QuickEvent *event_ptr = &event.value();
+            QuickEvent *event_ptr = &*event.value();
             if (std::get_if<ExitEvent>(event_ptr))
                 break;
         }
@@ -607,10 +607,10 @@ void events_thread_fn(
             continue;
 
         std::shared_ptr<saltus::WindowEvent> shared_event = std::move(event);
-        shared_data->events.send(shared_event);
+        shared_data->events.send(std::make_shared<QuickEvent>(shared_event));
 
         if (dynamic_cast<saltus::WindowExposeEvent*>(&*shared_event))
-            shared_data->events.send(ShouldRenderEvent { });
+            shared_data->events.send(std::make_shared<QuickEvent>(ShouldRenderEvent { }));
 
         if (dynamic_cast<saltus::WindowCloseRequestEvent*>(&*shared_event))
             break;
@@ -659,7 +659,7 @@ void events_thread_fn(
             window->warp_mouse(size.width/2, size.height/2);
         }
     }
-    shared_data->events.send(ExitEvent { });
+    shared_data->events.send(std::make_shared<QuickEvent>(ExitEvent { }));
     shared_data->stop.store(true);
     logger::info() << "Stoping !\n";
 }
