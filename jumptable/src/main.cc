@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -10,6 +11,7 @@
 #include <iterator>
 #include <matrix/matrix.hh>
 #include <memory>
+#include <mutex>
 #include <numbers>
 #include <saltus/window.hh>
 #include <saltus/window_events.hh>
@@ -24,8 +26,19 @@
 #include <saltus/byte_array.hh>
 #include <saltus/mesh.hh>
 #include <saltus/vertex_attribute.hh>
+#include <unordered_set>
 #include <variant>
-#include "math/transformation.hh"
+#include <math/transformation.hh>
+#include <saltus/bind_group.hh>
+#include <saltus/bind_group_layout.hh>
+#include <saltus/image.hh>
+#include <saltus/instance_group.hh>
+#include <saltus/loaders/obj_loader.hh>
+#include <saltus/loaders/tga_loader.hh>
+#include <saltus/sampler.hh>
+#include <saltus/texture.hh>
+#include <saltus/shader.hh>
+
 #include "quick_event_queue.hh"
 #include "saltus/bind_group.hh"
 #include "saltus/bind_group_layout.hh"
@@ -69,9 +82,26 @@ using QuickEvent = std::variant<
     ExitEvent, ShouldRenderEvent, RenderFinishedEvent
 >;
 
+struct Scene
+{
+    std::vector<std::shared_ptr<saltus::InstanceGroup>> instances;
+};
+
 struct SharedData
 {
     QuickEventQueue<QuickEvent> events;
+    std::atomic_bool stop;
+
+    std::mutex input_lock;
+    matrix::Vector3F user_input;
+    matrix::Vector2F accumulated_mouse_movement;
+
+    std::shared_ptr<saltus::BindGroup> scene_bind_group;
+    std::shared_ptr<saltus::BindGroupLayout> obj_bind_group_layout;
+    std::shared_ptr<saltus::ShaderPack> shader_pack;
+
+    std::mutex scene_mutex;
+    Scene scene;
 };
 
 struct Material
@@ -178,6 +208,7 @@ obj_object_to_instance_group(
         object.normals.resize(vertex_count, matrix::Vector3F({ 0.f, 0.f, 0.f }));
     }
     std::vector<matrix::Vector2F> texcoords;
+    texcoords.reserve(vertex_count);
     std::transform(
         object.texture_coordinates.cbegin(), object.texture_coordinates.cend(),
         std::back_insert_iterator<std::vector<matrix::Vector2F>>(texcoords),
@@ -279,88 +310,14 @@ obj_object_to_instance_group(
     return instance_groups;
 }
 
-void render_thread_fn(
+void scene_load_thread_fn(
     saltus::Renderer *renderer,
     SharedData *shared_data
 ) {
     logger::info() << "Loading model...\n";
-    // auto model = saltus::obj::load_obj("assets/cube.obj");
     auto model = saltus::loaders::obj::load_obj("assets/sponza/sponzaobj.obj");
-    // auto model = saltus::loaders::obj::load_obj("assets/lion.obj");
     // auto model = saltus::loaders::obj::load_obj("assets/vase.obj");
     logger::info() << "Model loaded !\n";
-
-    auto receiver = shared_data->events.subscribe();
-
-    auto bind_group_layout = renderer->create_bind_group_layout({
-        .bindings = {
-            {
-                .type = saltus::BindingType::UniformBuffer,
-                .count = 1,
-                .binding_id = 0,
-            }
-        }
-    });
-    auto bind_group = renderer->create_bind_group({
-        .layout = bind_group_layout,
-    });
-
-    auto obj_bind_group_layout = renderer->create_bind_group_layout({
-        .bindings = {
-            {
-                .type = saltus::BindingType::Texture,
-                .count = 1,
-                .binding_id = 0,
-            }
-        }
-    });
-
-    UniformData uniform_data = {};
-    auto uniform_buffer = renderer->create_buffer({
-        .usages = saltus::BufferUsages{}.with_uniform(),
-        .access_hint = saltus::BufferAccessHint::Dynamic,
-        .size = sizeof(uniform_data),
-        .data = reinterpret_cast<uint8_t*>(&uniform_data),
-    });
-
-    bind_group->set_binding(0, uniform_buffer);
-
-    std::vector<std::shared_ptr<saltus::InstanceGroup>> instance_groups;
-
-    saltus::ShaderPackCreateInfo material_info{};
-    material_info.bind_group_layouts.push_back(bind_group_layout);
-    material_info.bind_group_layouts.push_back(obj_bind_group_layout);
-    material_info.primitive_topology = saltus::PritmitiveTopology::TriangleList;
-    material_info.cull_mode = saltus::ShaderPackCullMode::None;
-    material_info.vertex_shader = renderer->create_shader({
-        .kind = saltus::ShaderKind::Vertex,
-        .source_code = read_full_file("build/saltus/shaders/shader.vert.spv"),
-    });
-    material_info.fragment_shader = renderer->create_shader({
-        .kind = saltus::ShaderKind::Fragment,
-        .source_code = read_full_file("build/saltus/shaders/shader.frag.spv"),
-    });
-    material_info.vertex_attributes.push_back({
-        .location = 0,
-        .name = "position",
-        .type = saltus::VertexAttributeType::Vec4f,
-    });
-    material_info.vertex_attributes.push_back({
-        .location = 1,
-        .name = "color",
-        .type = saltus::VertexAttributeType::Vec3f,
-    });
-    material_info.vertex_attributes.push_back({
-        .location = 2,
-        .name = "normal",
-        .type = saltus::VertexAttributeType::Vec3f,
-    });
-    material_info.vertex_attributes.push_back({
-        .location = 3,
-        .name = "uvs",
-        .type = saltus::VertexAttributeType::Vec2f,
-    });
-    auto shader_pack = renderer->create_shader_pack(material_info);
 
     logger::info() << "Loading textures...\n";
     std::vector<std::unique_ptr<Material>> materials;
@@ -371,7 +328,7 @@ void render_thread_fn(
         [&](auto &obj_material){
             return obj_material_to_material(
                 renderer, obj_material,
-                shader_pack, obj_bind_group_layout
+                shared_data->shader_pack, shared_data->obj_bind_group_layout
             );
         }
     );
@@ -380,74 +337,186 @@ void render_thread_fn(
 
     for (auto &object : model.objects)
     {
+        if (shared_data->stop.load())
+            break;
         logger::debug() << "Loading object " << object.name.value_or("") << "\n";
         auto new_instances = obj_object_to_instance_group(
             renderer, object,
-            bind_group,
+            shared_data->scene_bind_group,
             materials
         );
-        instance_groups.insert(instance_groups.end(), new_instances.cbegin(), new_instances.cend());
+
+        shared_data->scene_mutex.lock();
+        shared_data->scene.instances
+            .insert(shared_data->scene.instances.end(), new_instances.cbegin(), new_instances.cend());
+        shared_data->scene_mutex.unlock();
     }
     logger::info() << "Ready !\n";
+
+}
+
+void render_thread_fn(
+    saltus::Renderer *renderer,
+    SharedData *shared_data
+) {
+    auto receiver = shared_data->events.subscribe();
+
+    auto scene_bind_group_layout = renderer->create_bind_group_layout({
+        .bindings = {
+            {
+                .type = saltus::BindingType::UniformBuffer,
+                .count = 1,
+                .binding_id = 0,
+            }
+        }
+    });
+    auto scene_bind_group = renderer->create_bind_group({
+        .layout = scene_bind_group_layout,
+    });
+    shared_data->scene_bind_group = scene_bind_group;
+
+    auto obj_bind_group_layout = renderer->create_bind_group_layout({
+        .bindings = {
+            {
+                .type = saltus::BindingType::Texture,
+                .count = 1,
+                .binding_id = 0,
+            }
+        }
+    });
+    shared_data->obj_bind_group_layout = obj_bind_group_layout;
+
+    UniformData uniform_data = {};
+    auto uniform_buffer = renderer->create_buffer({
+        .usages = saltus::BufferUsages{}.with_uniform(),
+        .access_hint = saltus::BufferAccessHint::Dynamic,
+        .size = sizeof(uniform_data),
+        .data = reinterpret_cast<uint8_t*>(&uniform_data),
+    });
+
+    scene_bind_group->set_binding(0, uniform_buffer);
+
+    saltus::ShaderPackCreateInfo shader_pack_info{};
+    shader_pack_info.bind_group_layouts.push_back(scene_bind_group_layout);
+    shader_pack_info.bind_group_layouts.push_back(obj_bind_group_layout);
+    shader_pack_info.primitive_topology = saltus::PritmitiveTopology::TriangleList;
+    shader_pack_info.cull_mode = saltus::ShaderPackCullMode::None;
+    shader_pack_info.vertex_shader = renderer->create_shader({
+        .kind = saltus::ShaderKind::Vertex,
+        .source_code = read_full_file("build/saltus/shaders/shader.vert.spv"),
+    });
+    shader_pack_info.fragment_shader = renderer->create_shader({
+        .kind = saltus::ShaderKind::Fragment,
+        .source_code = read_full_file("build/saltus/shaders/shader.frag.spv"),
+    });
+    shader_pack_info.vertex_attributes.push_back({
+        .location = 0,
+        .name = "position",
+        .type = saltus::VertexAttributeType::Vec4f,
+    });
+    shader_pack_info.vertex_attributes.push_back({
+        .location = 1,
+        .name = "color",
+        .type = saltus::VertexAttributeType::Vec3f,
+    });
+    shader_pack_info.vertex_attributes.push_back({
+        .location = 2,
+        .name = "normal",
+        .type = saltus::VertexAttributeType::Vec3f,
+    });
+    shader_pack_info.vertex_attributes.push_back({
+        .location = 3,
+        .name = "uvs",
+        .type = saltus::VertexAttributeType::Vec2f,
+    });
+    auto shader_pack = renderer->create_shader_pack(shader_pack_info);
+    shared_data->shader_pack = shader_pack;
+
+    std::thread scene_load_thread(scene_load_thread_fn, renderer, shared_data);
 
     matrix::Matrix4F mvp_matrix;
 
     int frame_counter = 0;
     auto start_t = std::chrono::high_resolution_clock::now();
     auto last_t = std::chrono::high_resolution_clock::now();
+    auto last_update = std::chrono::high_resolution_clock::now();
     auto last_print = std::chrono::high_resolution_clock::now();
     auto print_interval = 1s;
+
+    const float camera_speed = 0.00025;
+    // const float camera_look_speed = 0.0001;
+    const float camera_look_speed = 0.005;
+    matrix::Vector3F camera_pos {{0., 0.5, 0.}};
+    matrix::Vector3F camera_rot {{0., 0., 0.}};
+
+    auto camera_rot_matrix = [&]() -> matrix::Matrix4F {
+        return
+               math::transformation::rotate3Dz(camera_rot.z()) *
+               math::transformation::rotate3Dy(camera_rot.y()) *
+               math::transformation::rotate3Dx(camera_rot.x())
+        ;
+    };
+    auto inv_camera_rot_matrix = [&]() -> matrix::Matrix4F {
+        return
+               math::transformation::rotate3Dx(-camera_rot.x()) *
+               math::transformation::rotate3Dy(-camera_rot.y()) *
+               math::transformation::rotate3Dz(-camera_rot.z())
+        ;
+    };
 
     auto update = [&]() {
         frame_counter++;
 
-        auto microseconds_time = (std::chrono::high_resolution_clock::now() - start_t);
-        float time = std::chrono::duration_cast<std::chrono::microseconds>(microseconds_time).count() / 1.e6f;
-        uniform_data.time = time;
+        auto chrono_time = std::chrono::high_resolution_clock::now() - start_t;
+        float time = std::chrono::duration_cast<std::chrono::microseconds>(chrono_time).count() / 1.e6f;
+        auto chrono_dt = std::chrono::high_resolution_clock::now() - last_update;
+        float dt = std::chrono::duration_cast<std::chrono::microseconds>(chrono_dt).count() / 1.e6f;
 
-        auto rotation = math::transformation::rotate3Dy(time / 2.f);
+        {
+            std::lock_guard lock(shared_data->input_lock);
+            camera_pos += (camera_rot_matrix() * shared_data->user_input.extend(1.)).pop() * camera_speed * dt;
+            camera_rot.y() += shared_data->accumulated_mouse_movement.x() * camera_look_speed;
+            camera_rot.x() += shared_data->accumulated_mouse_movement.y() * camera_look_speed;
+
+            shared_data->accumulated_mouse_movement = matrix::Vector2F{{0.f, 0.f}};
+        }
 
         auto buffsize = renderer->framebuffer_size();
         float ar = static_cast<float>(buffsize.x()) / buffsize.y();
-        mvp_matrix = matrix::identity<float, 4>();
 
-        mvp_matrix *= math::transformation::perspective(
-            ar, 0.001f, 100.f, (2.f * std::numbers::pi_v<float>) / 3.f
-        );
-        mvp_matrix *= math::transformation::translate3D(
-            0.f, 0.5f, 0.f
-            // 0.f, 0.5f, (std::sin(time / 2.f) + 1.f) / 4.f
-            // 0.f, 0.f, (std::sin(time / 2.f) + 1.f) / 4.f
-            // 0.f, 0.f, 0.5f
-        );
-        mvp_matrix *= rotation;
+        mvp_matrix = matrix::identity<float, 4>();
         mvp_matrix *= math::transformation::scale3D(
             1.f, -1.f, 1.f
         );
-        mvp_matrix = mvp_matrix.transpose();
-
-        uniform_data.mvp = mvp_matrix;
+        mvp_matrix *= math::transformation::perspective(
+            ar, 0.001f, 100.f, (2.f * std::numbers::pi_v<float>) / 3.f
+        );
+        mvp_matrix *= inv_camera_rot_matrix();
+        mvp_matrix *= math::transformation::translate3D(
+            camera_pos * -1.f
+        );
 
         matrix::Vector4F light_dir{{1.f, 1.f, 1.f, 1.f}};
-        // light_dir = rotation * light_dir;
-        float length = std::sqrt(
-            light_dir.x()*light_dir.x()+
-            light_dir.y()*light_dir.y()+
-            light_dir.z()*light_dir.z()
-        );
-        light_dir.x() /= length;
-        light_dir.y() /= length;
-        light_dir.z() /= length;
+
+        light_dir.w() = 0.;
+        light_dir.normalize();
+
+        uniform_data.time = time;
+        uniform_data.mvp = mvp_matrix.transpose();
         uniform_data.light_direction = light_dir;
-        
+       
         uniform_buffer->write(reinterpret_cast<uint8_t*>(&uniform_data));
     };
     auto render = [&]() {
         update();
 
+        shared_data->scene_mutex.lock();
+        Scene scene = shared_data->scene;
+        shared_data->scene_mutex.unlock();
+
         renderer->render({
-            .instance_groups = instance_groups,
-            .clear_color = matrix::Vector4F{{ 0., 0., 0., 1. }},
+            .instance_groups = scene.instances,
+            .clear_color = matrix::Vector4F{{ 0., 0., 0., 0. }},
         });
         auto elapsed = std::chrono::high_resolution_clock::now() - last_t;
         auto micros = std::chrono::duration_cast<std::chrono::microseconds>(elapsed);
@@ -462,23 +531,76 @@ void render_thread_fn(
         }
     };
 
-    while (true)
+    scene_load_thread.join();
+
+    while (!shared_data->stop.load())
     {
-        auto event = receiver->poll_recv();
-        QuickEvent *event_ptr = event ? &event.value() : nullptr;
-        if (std::get_if<ExitEvent>(event_ptr))
-            break;
+        while (auto event = receiver->poll_recv())
+        {
+            QuickEvent *event_ptr = &event.value();
+            if (std::get_if<ExitEvent>(event_ptr))
+                break;
+        }
 
         render();
     }
 
+    scene_load_thread.join();
+
     renderer->wait_for_idle();
 }
+
+const int KEY_ESC = 9;
+const int KEY_W = 25;
+const int KEY_A = 38;
+const int KEY_S = 39;
+const int KEY_D = 40;
+const int KEY_SPACE = 65;
+const int KEY_SHIFTL = 50;
 
 void events_thread_fn(
     saltus::Window *window,
     SharedData *shared_data
 ) {
+    std::unordered_set<uint8_t> pressed_keys;
+
+    auto store_user_input = [&]() {
+        std::lock_guard guard {shared_data->input_lock};
+
+        shared_data->user_input = matrix::Vector3F({0.,0.,0.});
+        shared_data->user_input.z() += pressed_keys.contains(KEY_W) ? 1. : 0.;
+        shared_data->user_input.z() -= pressed_keys.contains(KEY_S) ? 1. : 0.;
+        shared_data->user_input.x() += pressed_keys.contains(KEY_D) ? 1. : 0.;
+        shared_data->user_input.x() -= pressed_keys.contains(KEY_A) ? 1. : 0.;
+
+        shared_data->user_input.y() += pressed_keys.contains(KEY_SPACE) ? 1. : 0.;
+        shared_data->user_input.y() -= pressed_keys.contains(KEY_SHIFTL) ? 1. : 0.;
+    };
+
+    // window->show_mouse();
+    window->release_mouse();
+
+    bool mouse_grabbed = false;
+    auto grab = [&]() {
+        if (window->capture_mouse())
+        {
+            mouse_grabbed = true;
+            window->hide_mouse();
+            auto size = window->request_geometry();
+            window->warp_mouse(size.width/2, size.height/2);
+            logger::info() << "Mouse captured\n";
+        }
+        else {
+            logger::warn() << "Could not capture mouse\n";
+        }
+    };
+    auto ungrab = [&]() {
+        mouse_grabbed = false;
+        window->show_mouse();
+        window->release_mouse();
+        logger::info() << "Mouse released\n";
+    };
+
     for (;;)
     {
         auto event = window->wait_event();
@@ -493,9 +615,54 @@ void events_thread_fn(
 
         if (dynamic_cast<saltus::WindowCloseRequestEvent*>(&*shared_event))
             break;
+
+        if (auto key_press = dynamic_cast<saltus::WindowKeyPressEvent*>(&*shared_event))
+        {
+            pressed_keys.insert(key_press->keycode);
+            store_user_input();
+            if (key_press->keycode == KEY_ESC)
+                ungrab();
+        }
+
+        if (auto key_press = dynamic_cast<saltus::WindowKeyReleaseEvent*>(&*shared_event))
+        {
+            pressed_keys.erase(key_press->keycode);
+            store_user_input();
+        }
+
+        if (auto button_press = dynamic_cast<saltus::WindowMouseButtonPressEvent*>(&*shared_event))
+        {
+            if (button_press->pressed_button == 1 && !mouse_grabbed)
+            {
+                grab();
+            }
+        }
+
+        if (auto mouse_move = dynamic_cast<saltus::WindowMouseMoveEvent*>(&*shared_event))
+        {
+            if (!mouse_grabbed)
+                continue;
+
+            auto size = window->request_geometry();
+            matrix::Vector2<int> centeri {{ size.width / 2, size.height / 2 }};
+            matrix::Vector2F centerf {{ centeri.x() / 1.f, centeri.y() / 1.f }};
+            matrix::Vector2F new_mouse_pos {{ mouse_move->x / 1.f, mouse_move->y / 1.f }};
+            matrix::Vector2F delta = new_mouse_pos - centerf;
+
+            if (std::abs(delta.x()) < 1. && std::abs(delta.y()) < 1.)
+                continue;
+
+            {
+                std::lock_guard guard {shared_data->input_lock};
+                shared_data->accumulated_mouse_movement += delta;
+            }
+
+            window->warp_mouse(size.width/2, size.height/2);
+        }
     }
     shared_data->events.send(ExitEvent { });
-    logger::info() << "Hi!\n";
+    shared_data->stop.store(true);
+    logger::info() << "Stoping !\n";
 }
 
 int main()
@@ -516,9 +683,7 @@ int main()
 
     logger::info() << "Starting!\n";
 
-    SharedData shared_data {
-        .events = QuickEventQueue<QuickEvent>(),
-    };
+    SharedData shared_data {};
 
     std::thread render_thread(render_thread_fn, &*renderer, &shared_data);
     std::thread events_thread(events_thread_fn, &window, &shared_data);

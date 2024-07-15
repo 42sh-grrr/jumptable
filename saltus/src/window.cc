@@ -342,6 +342,7 @@ namespace saltus
              0, 0,
              new_x, new_y
         );
+        xcb_flush(data_->connection);
     }
     
     VkSurfaceKHR Window::create_vulkan_surface(VkInstance instance) const
