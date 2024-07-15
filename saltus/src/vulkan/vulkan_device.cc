@@ -25,7 +25,7 @@ namespace saltus::vulkan
 
     bool QueueFamilyIndices::is_complete()
     {
-        return graphicsFamily.has_value() && presentFamily.has_value() && transferFamily.has_value();
+        return graphics_family.has_value() && present_family.has_value() && transfer_family.has_value();
     }
 
     VulkanDevice::VulkanDevice(const Window &window, std::shared_ptr<VulkanInstance> instance)
@@ -38,13 +38,14 @@ namespace saltus::vulkan
         vkGetPhysicalDeviceProperties(physical_device_, &physical_device_properties_);
 
         QueueFamilyIndices families = get_physical_device_family_indices(physical_device_);
+        physical_device_queue_families_ = families;
 
         std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
 
         float priority = 1.f;
         for (uint32_t index : std::set{
-            families.graphicsFamily.value(), families.presentFamily.value(),
-            families.transferFamily.value()
+            families.graphics_family.value(), families.present_family.value(),
+            families.transfer_family.value()
         })
         {
             VkDeviceQueueCreateInfo info{};
@@ -91,14 +92,14 @@ namespace saltus::vulkan
         if (result != VK_SUCCESS)
             throw std::runtime_error("Vulkand device creation error");
 
-        vkGetDeviceQueue(device_, families.graphicsFamily.value(), 0, &graphics_queue_);
-        vkGetDeviceQueue(device_, families.presentFamily.value(), 0, &present_queue_);
-        vkGetDeviceQueue(device_, families.transferFamily.value(), 0, &transfer_queue_);
+        vkGetDeviceQueue(device_, families.graphics_family.value(), 0, &graphics_queue_);
+        vkGetDeviceQueue(device_, families.present_family.value(), 0, &present_queue_);
+        vkGetDeviceQueue(device_, families.transfer_family.value(), 0, &transfer_queue_);
 
         VkCommandPoolCreateInfo pool_info{};
         pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        pool_info.queueFamilyIndex = families.graphicsFamily.value();
+        pool_info.queueFamilyIndex = families.graphics_family.value();
 
         result = vkCreateCommandPool(device_, &pool_info, nullptr, &resettable_command_buffer_pool_);
         if (result != VK_SUCCESS)
@@ -154,7 +155,7 @@ namespace saltus::vulkan
     {
         if (physical_device_ == nullptr)
             throw std::runtime_error("Physical device has not been yet set");
-        return get_physical_device_family_indices(physical_device_);
+        return physical_device_queue_families_;
     }
 
     QueueFamilyIndices VulkanDevice::get_physical_device_family_indices(VkPhysicalDevice device) const
@@ -167,23 +168,38 @@ namespace saltus::vulkan
         vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, families.data());
 
         int index = 0;
+        uint32_t last_transfer_flags = ~0u;
         for (const auto &family : families)
         {
             if (family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-                indices.graphicsFamily = index;
-            if ((family.queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0 && (family.queueFlags & VK_QUEUE_TRANSFER_BIT))
-                indices.transferFamily = index;
+            {
+                indices.graphics_family = index;
+                indices.graphics_family_queuecount = family.queueCount;
+            }
+            if (
+                (family.queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0 &&
+                (family.queueFlags & VK_QUEUE_TRANSFER_BIT) &&
+                (family.queueFlags < last_transfer_flags)
+            ) {
+                indices.transfer_family = index;
+                indices.transfer_family_queuecount = family.queueCount;
+                last_transfer_flags = family.queueFlags;
+            }
+            logger::debug() << string_VkQueueFlags(family.queueFlags) << ": " << family.queueCount << "\n";
 
             VkBool32 supported = false;
             vkGetPhysicalDeviceSurfaceSupportKHR(device, index, surface_, &supported);
             if (supported)
-                indices.presentFamily = index;
+            {
+                indices.present_family = index;
+                indices.present_family_queuecount = family.queueCount;
+            }
 
             index++;
         }
         // graphics family is a valid transfer family
-        if (!indices.transferFamily.has_value())
-            indices.transferFamily = indices.graphicsFamily;
+        if (!indices.transfer_family.has_value())
+            indices.transfer_family = indices.graphics_family;
 
         return indices;
     }

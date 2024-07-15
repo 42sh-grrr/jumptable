@@ -363,8 +363,8 @@ namespace saltus::vulkan
         QueueFamilyIndices indices = device_->get_physical_device_family_indices();
 
         std::array<uint32_t, 2> queue_family_indices = {
-            indices.graphicsFamily.value(),
-            indices.presentFamily.value(),
+            indices.graphics_family.value(),
+            indices.present_family.value(),
         };
 
         if (queue_family_indices[0] != queue_family_indices[1]) {

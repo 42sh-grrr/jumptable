@@ -19,9 +19,12 @@ namespace saltus::vulkan
 
     struct QueueFamilyIndices
     {
-        std::optional<uint32_t> graphicsFamily;
-        std::optional<uint32_t> presentFamily;
-        std::optional<uint32_t> transferFamily;
+        std::optional<uint32_t> graphics_family;
+        uint32_t graphics_family_queuecount;
+        std::optional<uint32_t> present_family;
+        uint32_t present_family_queuecount;
+        std::optional<uint32_t> transfer_family;
+        uint32_t transfer_family_queuecount;
 
         bool is_complete();
     };
@@ -67,6 +70,7 @@ namespace saltus::vulkan
 
         const Window &window_;
         VkPhysicalDeviceProperties physical_device_properties_;
+        QueueFamilyIndices physical_device_queue_families_;
 
         VkSurfaceKHR surface_ = VK_NULL_HANDLE;
         VkPhysicalDevice physical_device_ = VK_NULL_HANDLE;

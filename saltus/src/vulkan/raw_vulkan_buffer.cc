@@ -18,8 +18,8 @@ namespace saltus::vulkan
         create_info.size = size;
         create_info.usage = usage_flags;
         uint32_t families[] = {
-            device->get_physical_device_family_indices().graphicsFamily.value(),
-            device->get_physical_device_family_indices().transferFamily.value(),
+            device->get_physical_device_family_indices().graphics_family.value(),
+            device->get_physical_device_family_indices().transfer_family.value(),
         };
         if (families[0] == families[1])
         {
