@@ -185,7 +185,6 @@ namespace saltus::vulkan
                 indices.transfer_family_queuecount = family.queueCount;
                 last_transfer_flags = family.queueFlags;
             }
-            logger::debug() << string_VkQueueFlags(family.queueFlags) << ": " << family.queueCount << "\n";
 
             VkBool32 supported = false;
             vkGetPhysicalDeviceSurfaceSupportKHR(device, index, surface_, &supported);
