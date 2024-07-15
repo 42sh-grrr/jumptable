@@ -14,6 +14,14 @@ set(CMAKE_CXX_FLAGS_DEBUG
     "-g3 -fno-inline -fsanitize=address"
 )
 
+set(CMAKE_CXX_FLAGS_PROFILING
+    "-g3 -fno-inline -O3 -DNDEBUG"
+)
+
+set(CMAKE_CXX_FLAGS_RELEASE
+    "-O3 -DNDEBUG"
+)
+
 set(CMAKE_EXE_LINKER_FLAGS_DEBUG
     "-fsanitize=address"
 )
